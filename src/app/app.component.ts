@@ -1,15 +1,29 @@
-import { Component } from '@angular/core';
+import { Component, OnDestroy } from '@angular/core';
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']
 })
-export class AppComponent {
+export class AppComponent implements OnDestroy {
+  ngOnDestroy(): void {
+
+  }
   title = 'app';
 
 
   test() {
+    for (let i = 0; i < 100000; i++) {
+      this.treeTableData.push(
+        {
+          id: 7, ord: 8, level: 2,
+          gono: 'P010102156ZCEH',
+          goname: '圆头⊕-JIS铁板牙A热(三价铬)',
+          gg: 'M4-16*19MM蓝锌(环保)尖尾加硬38-42度.￠6.6',
+          dw: 'PC', parentid: 6
+        });
+    }
+    let startTime = new Date().getTime();
     let filterFunc = this.genFilterExpression(null, null);
     let filterDatas = this.treeTableData.filter(value => {
       let result = filterFunc(value);
@@ -17,6 +31,9 @@ export class AppComponent {
       return result;
     });
     console.log(filterDatas);
+    let runTime = new Date().getTime();
+    console.log(runTime - startTime);
+
   }
   treeTableData: ITreeTableData[] = [
     { id: 1, ord: 1, level: 0, gono: 'B001-41AGAGF03', goname: '吊扇螺丝包', gg: 'A76彩+W44 环保蓝锌5F(PE袋不印字', dw: '包' },
@@ -35,7 +52,7 @@ export class AppComponent {
   filters: FilterMetadata[] = [
     { field: 'gono', value: 'P010102156', operators: 'contains' },
     {
-      field: "group1", value: "", operators: "none", concat: 'and', IsChildExpress: true,
+      field: "childQuery", value: "", operators: "none", concat: 'and', IsChildExpress: true,
       childs: [
         { field: 'goname', value: '铁板牙', operators: 'contains', concat: 'none' },
         { field: 'goname', value: '圆头十字', operators: 'contains', concat: 'or' }
@@ -87,7 +104,7 @@ export class AppComponent {
     notFilter.childs = [root];
     this.RecursionGenerateExpression(value, notFilter);
     let rowFilterFunc = notFilter.Expression;
-    console.log(rowFilterFunc.toString());
+    console.log(rowFilterFunc);
     let presetFilterFunc = (this.filterExpression ? this.parseFilter(this.filterExpression) : (value) => true);
     return (value) => presetFilterFunc(value) && rowFilterFunc(value) && this.keywordFilter(value, filter);
     // (value)=> ( (value)=>func1(value) && ( (value)=> (value)=>func2(value) || (value)=>func3(value) ))
@@ -103,12 +120,14 @@ export class AppComponent {
     root.childs && root.childs.forEach(child => {
       if (!(child.IsSetNode && root.IsProcessDone)) {
         this.RecursionGenerateExpression(value, child);
-        //拼接表达式树
-        this.ConcatExpression(root, child,
-          root.childs[0] == child,
-          root.childs[root.childs.length - 1] == child);
+        //拼接表达式树 //42002
+        // this.ConcatExpression(root, child,
+        //   root.childs[0] == child,
+        //   root.childs[root.childs.length - 1] == child);
       }
     });
+    root.childs && this.combineFilter2(root, root.childs); //24365
+    //root.childs && this.combineFilter(root, root.childs); //43767
   }
   RecursionGenerateListExpression(c) {
 
@@ -137,37 +156,94 @@ export class AppComponent {
       return filterConstraint && filterConstraint(dataFieldValue, filterValue);
     }
   }
+  combineFilter<T>(rootFilter: FilterMetadata, childFilters: FilterMetadata[]) {
+    let isFirst = true;
+    for (let childFilter of childFilters) {
+      let childFunc = childFilter.Expression;
+      let func = rootFilter.Expression;
+      if (isFirst) {
+        if (childFilter.invert)
+          rootFilter.Expression = value => !childFunc(value);
+        else
+          rootFilter.Expression = value => childFunc(value);
+        isFirst = false;
+      } else {
+        if (childFilter.concat == 'or') {
+          if (childFilter.invert)
+            rootFilter.Expression = value => (func(value) || !childFunc(value));
+          else
+            rootFilter.Expression = value => (func(value) || childFunc(value));
+        } else {
+          if (childFilter.invert)
+            rootFilter.Expression = value => (func(value) && !childFunc(value));
+          else
+            rootFilter.Expression = value => (func(value) && childFunc(value));
+        }
+      }
+    }
+    if (rootFilter.invert) {
+      let func = rootFilter.Expression;
+      rootFilter.Expression = value => !func(value);
+    }
+  }
+  combineFilter2<T>(rootFilter: FilterMetadata, childFilters: FilterMetadata[]) {
+    rootFilter.Expression = (value) => {
+      let bResult = false;
+      let isFirst = true;
+      for (let childFilter of childFilters) {
+        let childFunc = childFilter.Expression;
+        if (isFirst) {
+          if (childFilter.invert)
+            bResult = !childFunc(value);
+          else
+            bResult = childFunc(value);
+          isFirst = false;
+        } else {
+          if (childFilter.concat == 'or') {
+            if (bResult) continue;
+            if (childFilter.invert)
+              bResult = (bResult || !childFunc(value));
+            else
+              bResult = (bResult || childFunc(value));
+          } else {
+            if (!bResult) continue;
+            if (childFilter.invert)
+              bResult = bResult && !childFunc(value);
+            else
+              bResult = (bResult && childFunc(value));
+          }
+        }
+      }
+      if (rootFilter.invert) {
+        bResult = !bResult;
+      }
+      return bResult
+    }
+  }
   ConcatExpression(root: FilterMetadata, child: FilterMetadata, first: boolean, last: boolean) {
     let childFunc: Function = child.Expression,
       func: Function = root.Expression;
-    //let childFuncSecond, funcSecond;
     if (first) {
       if (child.invert)
         root.Expression = (value) => !childFunc(value);
       else
         root.Expression = value => childFunc(value);
-      console.log(childFunc);
     }
     else if (child.concat == 'and' || child.concat == 'none' || !child.concat) {
-      // funcSecond = func();
       if (child.invert)
         root.Expression = value => (func(value) && !childFunc(value));
       else
         root.Expression = value => (func(value) && childFunc(value));
-      //console.log(funcSecond);
     }
     else if (child.concat == 'or') {
-      // funcSecond = func();
       if (child.invert)
         root.Expression = value => (func(value) || !childFunc(value));
       else
         root.Expression = value => (func(value) || childFunc(value));
-      //console.log(funcSecond);
     }
     if (last) {
       if (root.invert) {
         func = root.Expression;
-        //funcSecond = func();
         root.Expression = value => !func(value);
       }
     }
@@ -263,6 +339,10 @@ export class AppComponent {
     }
   }
 }
+
+
+
+
 
 export interface FilterMetadata {
   id?: number;
