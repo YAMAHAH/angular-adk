@@ -35,6 +35,14 @@ export class JsUtils {
             return Object.prototype.toString.call(obj) === "[object " + type + "]";
         }
     }
+    static isString = JsUtils.isType('String');
+    static isBoolean = JsUtils.isType('Boolean');
+
+    static isNumber = JsUtils.isType('Number');
+    static isArray = JsUtils.isType('Array');
+    static isDate = JsUtils.isType('Date');
+    static isFunction = JsUtils.isType('Function');
+    static isJson = JsUtils.isType('JSON');
     static currying(func: Function) {
         let args = [];
         return function () {
