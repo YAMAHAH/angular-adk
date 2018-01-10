@@ -37,10 +37,15 @@ export class JsUtils {
     }
     static isString = JsUtils.isType('String');
     static isBoolean = JsUtils.isType('Boolean');
-
     static isNumber = JsUtils.isType('Number');
     static isArray = JsUtils.isType('Array');
     static isDate = JsUtils.isType('Date');
+    static isNull(value) { //void 0
+        return value === null;
+    }
+    static isUndefined(value) {
+        return value === undefined;
+    }
     static isFunction = JsUtils.isType('Function');
     static isJson = JsUtils.isType('JSON');
     static currying(func: Function) {

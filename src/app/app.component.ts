@@ -1,5 +1,8 @@
 import { Component, OnDestroy } from '@angular/core';
 import { JsUtils } from './helpers/JsUtils';
+import { gt, gte, lt, lte, eq, isEmpty } from 'lodash';
+import { FilterOperators } from './helpers/filterOperators';
+import { ExprressionBuilder, ExpressionNode } from './helpers/ExpressionBuilder';
 
 @Component({
   selector: 'app-root',
@@ -12,6 +15,33 @@ export class AppComponent implements OnDestroy {
   }
   title = 'app';
 
+  test2() {
+    const exprNode: ExpressionNode = {
+      node: 'and',
+      expressions: [
+        {
+          node: 'like',
+          property: 'gono',
+          subExpression: {
+            node: 'constant',
+            value: 'P010102156'
+          }
+        },
+        {
+          node: 'lt',
+          property: 'ord',
+          subExpression: {
+            node: 'constant',
+            value: '11'
+          }
+        }
+      ]
+    }
+    let exprBuilder = new ExprressionBuilder();
+    const expr = exprBuilder.visitExpression(exprNode);
+    let filterDatas = this.treeTableData.filter(expr);
+    console.log(filterDatas);
+  }
 
   test() {
     for (let i = 0; i < 100000; i++) {
@@ -26,7 +56,14 @@ export class AppComponent implements OnDestroy {
     }
     let startTime = new Date().getTime();
     let filterFunc = this.genFilterExpression(null);
-    let filterDatas = this.treeTableData.filter(filterFunc);
+    let strFilterFun = this.parseFilter("FilterOps.between(it.ord, [3, 5])");
+    console.log(strFilterFun({ ord: 5 }));
+
+    let customFilterFunc = it => this.filterConstraints.contains(it.gono, 'P010102156') &&
+      (this.filterConstraints.contains(it.goname, '铁板牙') || this.filterConstraints.contains(it.goname, "圆头十字"))
+      && this.filterConstraints.contains(it.goname, "铁板牙") || this.filterConstraints.startsWith(it.gono, "R001");
+    let betweenFunc = it => FilterOperators.between(it.ord, [1, 12]);
+    let filterDatas = this.treeTableData.filter(it => filterFunc(it) && betweenFunc(it));
     console.log(filterDatas);
     let runTime = new Date().getTime();
     console.log(runTime - startTime);
@@ -35,10 +72,13 @@ export class AppComponent implements OnDestroy {
     console.log('string', JsUtils.isString('mystr'));
     console.log('boolean', JsUtils.isBoolean(1));
     console.log('number', JsUtils.isNumber(123));
-    console.log('date', JsUtils.isDate(new Date().getTime));
+    console.log('date', JsUtils.isDate(new Date().getTime()));
 
-    console.log('between', this.filterConstraints.between(150, [100, 200, 300]));
+    console.log('between', FilterOperators.between(789, [100, 1230]));
+    console.log('notBetween', FilterOperators.notBetween(7890, [100, 1230]));
     console.log('like', this.filterConstraints.like(3568, 3));
+    console.log('greatThan', this.filterConstraints.greaterThan(true, false));
+    console.log('isEmpty', FilterOperators.isNull(void 0));
 
   }
   treeTableData: ITreeTableData[] = [
@@ -65,6 +105,7 @@ export class AppComponent implements OnDestroy {
       ]
     },
     { field: 'goname', value: '铁板牙', operators: 'contains', concat: 'and' },
+
     { field: 'gono', value: 'R001', operators: 'startsWith', concat: 'or' }
   ];
 
@@ -91,7 +132,7 @@ export class AppComponent implements OnDestroy {
     for (let j = 0; j < this.columns.length; j++) {
       let col = this.columns[j];
       if (filter && !globalMatch) {
-        globalMatch = this.filterConstraints['contains'](this.resolveFieldData(value, col.name), filter);
+        globalMatch = FilterOperators['contains'](this.resolveFieldData(value, col.name), filter);
       }
     }
     if (filter) {
@@ -108,10 +149,12 @@ export class AppComponent implements OnDestroy {
     root.childs = this.filters;
     let notFilter: FilterMetadata = { IsChildExpress: true, invert: true };
     notFilter.childs = [root];
+    let rootFilter: FilterMetadata = { IsChildExpress: true };
+    rootFilter.childs = [notFilter, { field: 'ord', value: [2, 6], operators: 'between' }];
     this.RecursionGenerateExpression(notFilter);
     let rowFilterFunc = notFilter.Expression;
     let presetFilterFunc = (this.filterExpression ? this.parseFilter(this.filterExpression) : (value) => true);
-    return (value) => presetFilterFunc(value) && rowFilterFunc(value) && this.keywordFilter(value, filter);
+    return it => presetFilterFunc(it) && rowFilterFunc(it) && this.keywordFilter(it, filter);
   }
   private RecursionGenerateExpression(root: FilterMetadata) {
     //生成相应的表达式树
@@ -154,9 +197,9 @@ export class AppComponent implements OnDestroy {
     let filterValue = filterMeta.value,
       filterField = filterMeta.field,
       filterMatchMode = filterMeta.operators || 'startsWith';
-    let filterConstraint = this.filterConstraints[filterMatchMode];
-    filterMeta.Expression = (value) => {
-      let dataFieldValue = this.resolveFieldData(value, filterField);
+    let filterConstraint = FilterOperators[filterMatchMode];
+    filterMeta.Expression = it => {
+      let dataFieldValue = filterMeta.customValue ? filterMeta.customValue(it) : this.resolveFieldData(it, filterField);
       return filterConstraint && filterConstraint(dataFieldValue, filterValue);
     }
   }
@@ -275,61 +318,87 @@ export class AppComponent implements OnDestroy {
   }
   filterConstraints = {
     greaterThan(value, filter) {
-      if (filter === undefined || filter === null || filter.trim() === '') {
+      if (filter === undefined || filter === null || filter.toString().trim() === '') {
         return true;
       }
       if (value === undefined || value === null) {
         return false;
       }
-      return value > filter;
+      return gt(value, filter);
     },
     notGreaterThan(value, filter) {
-      if (filter === undefined || filter === null || filter.trim() === '') {
+      if (filter === undefined || filter === null || filter.toString().trim() === '') {
         return true;
       }
       if (value === undefined || value === null) {
         return false;
       }
-      return !(value > filter);
+      return !gt(value, filter);
     },
-    greaterThanOrEqueals(value, filter) {
-      if (filter === undefined || filter === null || filter.trim() === '') {
+    greaterThanOrEquals(value, filter) {
+      if (filter === undefined || filter === null || filter.toString().trim() === '') {
         return true;
       }
       if (value === undefined || value === null) {
         return false;
+      }
+      if (!(typeof value == 'string' && typeof filter == 'string')) {
+        value = +value;
+        filter = +filter;
       }
       return value >= filter;
     },
-    lessThan(value, filter) {
-      if (filter === undefined || filter === null || filter.trim() === '') {
+    notGreaterThanOrEquals(value, filter) {
+      if (filter === undefined || filter === null || filter.toString().trim() === '') {
         return true;
       }
       if (value === undefined || value === null) {
         return false;
       }
-      return value < filter;
+      if (!(typeof value == 'string' && typeof filter == 'string')) {
+        value = +value;
+        filter = +filter;
+      }
+      return !(value >= filter);
+    },
+    lessThan(value, filter) {
+      if (filter === undefined || filter === null || filter.toString().trim() === '') {
+        return true;
+      }
+      if (value === undefined || value === null) {
+        return false;
+      }
+      return lt(value, filter);
     },
     notLessThan(value, filter) {
-      if (filter === undefined || filter === null || filter.trim() === '') {
+      if (filter === undefined || filter === null || filter.toString().trim() === '') {
         return true;
       }
       if (value === undefined || value === null) {
         return false;
       }
-      return !(value < filter);
+      return !lt(value, filter);
     },
     lessThanOrEqual(value, filter) {
-      if (filter === undefined || filter === null || filter.trim() === '') {
+      if (filter === undefined || filter === null || filter.toString().trim() === '') {
         return true;
       }
       if (value === undefined || value === null) {
         return false;
       }
-      return value <= filter;
+      return lte(value, filter);
+    },
+    notLessThanOrEqual(value, filter) {
+      if (filter === undefined || filter === null || filter.toString().trim() === '') {
+        return true;
+      }
+      if (value === undefined || value === null) {
+        return false;
+      }
+      return !lte(value, filter);
     },
     like(value, filter) {
-      if (filter === undefined || filter === null || (typeof filter === 'string' && filter.trim() === '')) {
+      if (filter === undefined || filter === null || (typeof filter === 'string' && filter.toString().trim() === '')) {
         return true;
       }
 
@@ -340,7 +409,7 @@ export class AppComponent implements OnDestroy {
       return value.toString().toLowerCase().indexOf(filter.toString().toLowerCase()) !== -1;
     },
     notLike(value, filter) {
-      if (filter === undefined || filter === null || (typeof filter === 'string' && filter.trim() === '')) {
+      if (filter === undefined || filter === null || (typeof filter === 'string' && filter.toString().trim() === '')) {
         return true;
       }
 
@@ -359,7 +428,13 @@ export class AppComponent implements OnDestroy {
         return false;
       }
       let [left, right] = filter;
+
       let filterValue = value.toString().toLowerCase();
+      if (typeof left == 'string')
+        left = left.toLowerCase();
+      if (typeof right == 'string')
+        right = right.toLowerCase();
+
       if (!right)
         return (filterValue >= left);
       else
@@ -388,7 +463,7 @@ export class AppComponent implements OnDestroy {
     notFuzzy(value, filter) { },
 
     regExp(value, filter) {
-
+      return filter.test(value);
     },
     isNull(value) {
 
@@ -404,7 +479,7 @@ export class AppComponent implements OnDestroy {
       return false;
     },
     startsWith(value, filter): boolean {
-      if (filter === undefined || filter === null || filter.trim() === '') {
+      if (filter === undefined || filter === null || filter.toString().trim() === '') {
         return true;
       }
 
@@ -416,7 +491,7 @@ export class AppComponent implements OnDestroy {
       return value.toString().toLowerCase().slice(0, filterValue.length) === filterValue;
     },
     notStartsWith(value, filter) {
-      if (filter === undefined || filter === null || filter.trim() === '') {
+      if (filter === undefined || filter === null || filter.toString().trim() === '') {
         return true;
       }
 
@@ -429,7 +504,7 @@ export class AppComponent implements OnDestroy {
     },
 
     contains(value, filter): boolean {
-      if (filter === undefined || filter === null || (typeof filter === 'string' && filter.trim() === '')) {
+      if (filter === undefined || filter === null || (typeof filter === 'string' && filter.toString().trim() === '')) {
         return true;
       }
 
@@ -440,7 +515,7 @@ export class AppComponent implements OnDestroy {
       return value.toString().toLowerCase().indexOf(filter.toString().toLowerCase()) !== -1;
     },
     notContains(value, filter): boolean {
-      if (filter === undefined || filter === null || (typeof filter === 'string' && filter.trim() === '')) {
+      if (filter === undefined || filter === null || (typeof filter === 'string' && filter.toString().trim() === '')) {
         return true;
       }
 
@@ -451,7 +526,7 @@ export class AppComponent implements OnDestroy {
       return value.toString().toLowerCase().indexOf(filter.toString().toLowerCase()) === -1;
     },
     endsWith(value, filter): boolean {
-      if (filter === undefined || filter === null || filter.trim() === '') {
+      if (filter === undefined || filter === null || filter.toString().trim() === '') {
         return true;
       }
 
@@ -463,7 +538,7 @@ export class AppComponent implements OnDestroy {
       return value.toString().toLowerCase().indexOf(filterValue, value.toString().length - filterValue.length) !== -1;
     },
     notEndsWith(value, filter) {
-      if (filter === undefined || filter === null || filter.trim() === '') {
+      if (filter === undefined || filter === null || filter.toString().trim() === '') {
         return true;
       }
 
@@ -476,18 +551,18 @@ export class AppComponent implements OnDestroy {
     },
 
     equals(value, filter): boolean {
-      if (filter === undefined || filter === null || (typeof filter === 'string' && filter.trim() === '')) {
+      if (filter === undefined || filter === null || (typeof filter === 'string' && filter.toString().trim() === '')) {
         return true;
       }
 
       if (value === undefined || value === null) {
         return false;
       }
-
+      // return value === other || (value !== value && other !== other)
       return value.toString().toLowerCase() == filter.toString().toLowerCase();
     },
     NotEquals(value, filter) {
-      if (filter === undefined || filter === null || (typeof filter === 'string' && filter.trim() === '')) {
+      if (filter === undefined || filter === null || (typeof filter === 'string' && filter.toString().trim() === '')) {
         return true;
       }
 
@@ -536,11 +611,10 @@ export class AppComponent implements OnDestroy {
 
 
 export interface FilterMetadata {
-  id?: number;
-  parentId?: number;
   field?: string;
   operators?: string;
   value?;
+  customValue?: Function
   concat?: string;
   invert?: boolean;
   isGroup?: boolean;
@@ -613,4 +687,12 @@ interface ITreeTableData {
   parent?;
   id?;
   parentid?;
+}
+
+interface expression {
+  nodeType: string;
+  left?: string;
+  right: expression;
+  value?;
+  childs: expression[];
 }
