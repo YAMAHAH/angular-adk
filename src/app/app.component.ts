@@ -16,6 +16,8 @@ export class AppComponent implements OnDestroy {
   title = 'app';
 
   test2() {
+    //gono like 'p010102156' && ((ord eq 8) || (ord between 10 23))
+    //((ord eq 8) || (ord between 10 23)) && gono like 'p010102156' 
     const exprNode: ExpressionNode = {
       node: 'and',
       expressions: [
@@ -24,21 +26,42 @@ export class AppComponent implements OnDestroy {
           property: 'gono',
           subExpression: {
             node: 'constant',
-            value: 'P010102156'
+            value: 'p010102156'
           }
         },
         {
-          node: 'lt',
-          property: 'ord',
-          subExpression: {
-            node: 'constant',
-            value: '11'
-          }
+          node: 'or',
+          expressions: [
+            {
+              node: 'eq',
+              property: 'ord',
+              subExpression: {
+                node: 'constant',
+                value: '8'
+              }
+            },
+            {
+              node: 'between',
+              property: 'ord',
+              subExpression: {
+                node: 'constant',
+                value: [10, 23]
+              }
+            }
+          ]
         }
       ]
     }
+    let exprNode2 = {
+      node: 'like',
+      property: 'gono',
+      subExpression: {
+        node: 'constant',
+        value: 'p010102156'
+      }
+    };
     let exprBuilder = new ExprressionBuilder();
-    const expr = exprBuilder.visitExpression(exprNode);
+    const expr = exprBuilder.visitExpression(exprNode2);
     let filterDatas = this.treeTableData.filter(expr);
     console.log(filterDatas);
   }

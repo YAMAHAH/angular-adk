@@ -19,7 +19,7 @@ export class FilterOperators {
         }
         return !gt(value, filter);
     }
-    static greaterThanOrEqueals(value, filter) {
+    static greaterThanOrEquals(value, filter) {
         if (filter === undefined || filter === null || filter.toString().trim() === '') {
             return true;
         }
@@ -28,7 +28,7 @@ export class FilterOperators {
         }
         return gte(value, filter);
     }
-    static notGreaterThanOrEqueals(value, filter) {
+    static notGreaterThanOrEquals(value, filter) {
         if (filter === undefined || filter === null || filter.toString().trim() === '') {
             return true;
         }

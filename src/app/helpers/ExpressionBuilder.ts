@@ -1,4 +1,5 @@
 import { FilterOperators } from './filterOperators';
+import { isFunction } from 'util';
 
 export class ExprressionBuilder {
     visitAndExpression(exprNode: ExpressionNode) {
@@ -33,6 +34,7 @@ export class ExprressionBuilder {
             case 'ne': return this.visitNeExpression(exprNode);
             case 'lt': return this.visitLtExpression(exprNode);
             case 'like': return this.visitLikeExpression(exprNode);
+            case 'between': return this.visitBetweenExpression(exprNode);
             default: break;
         }
     }
@@ -42,38 +44,76 @@ export class ExprressionBuilder {
             case 'and': return this.visitUnaryExpression(exprNode);
             case 'or': return this.visitUnaryExpression(exprNode);
             case 'not': return this.visitUnaryExpression(exprNode);
-            case 'eq': return this.visitBinaryExpression(exprNode);
-            case 'ne': return this.visitBinaryExpression(exprNode);
-            case 'lt': return this.visitBinaryExpression(exprNode);
-            case 'like': return this.visitBinaryExpression(exprNode);
+            // case 'eq': return this.visitBinaryExpression(exprNode);
+            // case 'ne': return this.visitBinaryExpression(exprNode);
+            // case 'lt': return this.visitBinaryExpression(exprNode);
+            // case 'like': return this.visitBinaryExpression(exprNode);
+            // case 'between': return this.visitBinaryExpression(exprNode);
         }
+        return this.visitNodeExpression(exprNode);
     }
 
-    visitPropertyValueExpression(propertyName: string) {
-        return it => this.resolveFieldData(it, propertyName);// it[propertyName];
+    visitPropertyValueExpression(exprNode: ExpressionNode) {
+        return it => isFunction(exprNode.value) ? exprNode.value(it) :
+            this.resolveFieldData(it, exprNode.property);
     }
 
     visitEqExpression(exprNode: ExpressionNode) {
-        let leftFunc = this.visitPropertyValueExpression(exprNode.property);
+        let leftFunc = this.visitPropertyValueExpression(exprNode);
         let rightValue = this.visitConstantExpression(exprNode.subExpression)
         return it => leftFunc(it) == rightValue;  //TODO 这里根据字符串或者数字分开处理
     }
 
     visitNeExpression(exprNode: ExpressionNode) {
-        let leftFunc = this.visitPropertyValueExpression(exprNode.property);
+        let leftFunc = this.visitPropertyValueExpression(exprNode);
         let rightValue = this.visitConstantExpression(exprNode.subExpression);
         return it => leftFunc(it) != rightValue;
     }
     visitLtExpression(exprNode: ExpressionNode) {
-        let leftFunc = this.visitPropertyValueExpression(exprNode.property);
+        let leftFunc = this.visitPropertyValueExpression(exprNode);
         let rightValue = this.visitConstantExpression(exprNode.subExpression);
         return it => leftFunc(it) < rightValue;
     }
     visitLikeExpression(exprNode: ExpressionNode) {
-        let leftFunc = this.visitPropertyValueExpression(exprNode.property);
+        let leftFunc = this.visitPropertyValueExpression(exprNode);
         let rightValue = this.visitConstantExpression(exprNode.subExpression);
-        return it => FilterOperators.contains(leftFunc(it), rightValue);      //leftFunc(it) < rightValue;
+        return it => FilterOperators.contains(leftFunc(it), rightValue);
     }
+    visitBetweenExpression(exprNode: ExpressionNode) {
+        let leftFunc = this.visitPropertyValueExpression(exprNode);
+        let rightValue = this.visitConstantExpression(exprNode.subExpression);
+        return it => FilterOperators.between(leftFunc(it), rightValue);
+    }
+    operators = {
+        eq: FilterOperators.equals,
+        ne: FilterOperators.notEquals,
+        lt: FilterOperators.lessThan,
+        nlt: FilterOperators.notLessThan,
+        lte: FilterOperators.lessThanOrEqual,
+        nlte: FilterOperators.notLessThanOrEqual,
+        gt: FilterOperators.greaterThan,
+        ngt: FilterOperators.notGreaterThan,
+        gte: FilterOperators.greaterThanOrEquals,
+        ngte: FilterOperators.notGreaterThanOrEquals,
+        like: FilterOperators.contains,
+        notlike: FilterOperators.notLike,
+        between: FilterOperators.between,
+        notbetween: FilterOperators.notBetween,
+        in: FilterOperators.in,
+        notin: FilterOperators.notIn,
+        startswith: FilterOperators.startsWith,
+        notstartswith: FilterOperators.notStartsWith,
+        endswith: FilterOperators.endsWith,
+        notendswith: FilterOperators.notEndsWith,
+        isnull: FilterOperators.isNull,
+        isnotnull: FilterOperators.isNotNull
+    }
+    visitNodeExpression(exprNode: ExpressionNode) {
+        let leftFunc = this.visitPropertyValueExpression(exprNode);
+        let rightValue = this.visitConstantExpression(exprNode.subExpression);
+        return it => this.operators[exprNode.node](leftFunc(it), rightValue);
+    }
+
 
     visitConstantExpression(exprNode: ExpressionNode) {
         return exprNode.value;
