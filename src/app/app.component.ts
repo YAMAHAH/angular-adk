@@ -27,7 +27,22 @@ export class AppComponent implements OnDestroy {
         ]
       },
       { field: 'goname', value: '铁板牙', operators: 'contains', concat: 'and' },
-      { field: 'ord', value: '5', operators: 'startsWith', concat: 'or' }
+      { field: 'ord', value: '5', operators: 'startsWith', concat: 'or' },
+      {
+        field: 'b11', value: "", operators: "none", concat: 'or', IsChildExpress: true, childs: [
+          {
+            field: 'b111', value: "", operators: "none", concat: 'or', IsChildExpress: true, childs: [
+              {
+                field: 'b122', value: "b122", operators: "like-b122"
+              },
+              { field: 'c222', value: "c222", operators: "like-c222", concat: 'or', },
+              { field: 'c333', value: "c333", operators: "like-c333", concat: 'or', }
+            ]
+          },
+          {
+            field: 'b1223', value: "b1223", operators: "like-b1223", concat: "and"
+          }]
+      }
     ];
     let rootExprNode = this.filterMetaConvertToExpressionTree(null, null, filters);
     console.log(rootExprNode);
@@ -199,10 +214,11 @@ export class AppComponent implements OnDestroy {
     let firstMeta = filterMetas[0];
     let reverseMetas = filterMetas.reverse();
     let prevNode: Expression = parent;
+    let prevMeta: FilterMetadata;
     while (reverseMetas.length > 0) {
       let nextLastMeta = reverseMetas.shift();
       let nextLogicNode: Expression, nextOperatorNode: Expression;
-      if (firstMeta != nextLastMeta) {
+      if ((firstMeta != nextLastMeta || (firstMeta == nextLastMeta && nextLastMeta.IsChildExpress))) {
         nextLogicNode = { //逻辑结点
           nodeType: nextLastMeta.concat == 'none' ? 'and' : nextLastMeta.concat,
           expressions: []
@@ -219,16 +235,17 @@ export class AppComponent implements OnDestroy {
             value: nextLastMeta.value
           }
         };
-      if (nextLogicNode && !nextLastMeta.IsChildExpress)
-        nextLogicNode.expressions.push(nextOperatorNode);
+      if (nextLogicNode) //&& !nextLastMeta.IsChildExpress
+        nextOperatorNode && nextLogicNode.expressions.unshift(nextOperatorNode);
+
       if (prevNode) {
         if (nextLogicNode)
-          prevNode.expressions.push(nextLogicNode);
+          nextLogicNode && prevNode.expressions.unshift(nextLogicNode);
         else
-          prevNode.expressions.push(nextOperatorNode);
-        if (firstMeta == nextLastMeta) prevNode.expressions = prevNode.expressions.reverse();
+          nextOperatorNode && prevNode.expressions.unshift(nextOperatorNode);
       }
       prevNode = nextLogicNode;
+      prevMeta = nextLastMeta;
       if (nextLastMeta.childs && nextLastMeta.childs.length > 0)
         this.filterMetaConvertToExpressionTree(root, prevNode, nextLastMeta.childs);
     }
