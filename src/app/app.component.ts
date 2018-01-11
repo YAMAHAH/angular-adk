@@ -1,8 +1,8 @@
 import { Component, OnDestroy } from '@angular/core';
 import { JsUtils } from './helpers/JsUtils';
 import { gt, gte, lt, lte, eq, isEmpty } from 'lodash';
-import { FilterOperators } from './helpers/filterOperators';
-import { ExprressionBuilder, ExpressionNode } from './helpers/ExpressionBuilder';
+import { ExprressionBuilder, Expression } from './helpers/ExpressionBuilder';
+import { ExpressionOperators } from './helpers/ExpressionOperators';
 
 @Component({
   selector: 'app-root',
@@ -16,52 +16,67 @@ export class AppComponent implements OnDestroy {
   title = 'app';
 
   test2() {
+
+    let filters: FilterMetadata[] = [
+      { field: 'gono', value: 'P010102156', operators: 'like' },
+      {
+        field: "childQuery", value: "", operators: "none", concat: 'and', IsChildExpress: true,
+        childs: [
+          { field: 'goname1', value: '铁板牙', operators: 'contains1', concat: 'none' },
+          { field: 'goname2', value: '圆头十字', operators: 'contains2', concat: 'or' }
+        ]
+      },
+      { field: 'goname', value: '铁板牙', operators: 'contains', concat: 'and' },
+      { field: 'ord', value: '5', operators: 'startsWith', concat: 'or' }
+    ];
+    let rootExprNode = this.filterMetaConvertToExpressionTree(null, null, filters);
+    console.log(rootExprNode);
     //gono like 'p010102156' && ((ord eq 8) || (ord between 10 23))
     //((ord eq 8) || (ord between 10 23)) && gono like 'p010102156' 
-    const exprNode: ExpressionNode = {
-      node: 'and',
+    const exprNode: Expression = {
+      nodeType: 'and',
       expressions: [
         {
-          node: 'like',
+          nodeType: 'like',
           property: 'gono',
-          subExpression: {
-            node: 'constant',
+          rightExpression: {
+            nodeType: 'constant',
             value: 'p010102156'
           }
         },
         {
-          node: 'or',
+          nodeType: 'or',
           expressions: [
             {
-              node: 'eq',
+              nodeType: 'eq',
               property: 'ord',
-              subExpression: {
-                node: 'constant',
+              rightExpression: {
+                nodeType: 'constant',
                 value: '8'
               }
             },
             {
-              node: 'between',
+              nodeType: 'fuzzy',
               property: 'ord',
-              subExpression: {
-                node: 'constant',
-                value: [10, 23]
+              rightExpression: {
+                nodeType: 'constant',
+                value: '5-23'
               }
             }
           ]
         }
       ]
-    }
-    let exprNode2 = {
-      node: 'like',
+    };
+    let exprNode2: Expression = {
+      nodeType: 'like',
       property: 'gono',
-      subExpression: {
-        node: 'constant',
+      rightExpression: {
+        nodeType: 'constant',
         value: 'p010102156'
       }
     };
     let exprBuilder = new ExprressionBuilder();
-    const expr = exprBuilder.visitExpression(exprNode2);
+    const expr = exprBuilder.lambdaExpression(exprNode);
     let filterDatas = this.treeTableData.filter(expr);
     console.log(filterDatas);
   }
@@ -85,7 +100,7 @@ export class AppComponent implements OnDestroy {
     let customFilterFunc = it => this.filterConstraints.contains(it.gono, 'P010102156') &&
       (this.filterConstraints.contains(it.goname, '铁板牙') || this.filterConstraints.contains(it.goname, "圆头十字"))
       && this.filterConstraints.contains(it.goname, "铁板牙") || this.filterConstraints.startsWith(it.gono, "R001");
-    let betweenFunc = it => FilterOperators.between(it.ord, [1, 12]);
+    let betweenFunc = it => ExpressionOperators.between(it.ord, [1, 12]);
     let filterDatas = this.treeTableData.filter(it => filterFunc(it) && betweenFunc(it));
     console.log(filterDatas);
     let runTime = new Date().getTime();
@@ -97,11 +112,11 @@ export class AppComponent implements OnDestroy {
     console.log('number', JsUtils.isNumber(123));
     console.log('date', JsUtils.isDate(new Date().getTime()));
 
-    console.log('between', FilterOperators.between(789, [100, 1230]));
-    console.log('notBetween', FilterOperators.notBetween(7890, [100, 1230]));
+    console.log('between', ExpressionOperators.between(789, [100, 1230]));
+    console.log('notBetween', ExpressionOperators.notBetween(7890, [100, 1230]));
     console.log('like', this.filterConstraints.like(3568, 3));
     console.log('greatThan', this.filterConstraints.greaterThan(true, false));
-    console.log('isEmpty', FilterOperators.isNull(void 0));
+    console.log('isEmpty', ExpressionOperators.isNull(void 0));
 
   }
   treeTableData: ITreeTableData[] = [
@@ -155,7 +170,7 @@ export class AppComponent implements OnDestroy {
     for (let j = 0; j < this.columns.length; j++) {
       let col = this.columns[j];
       if (filter && !globalMatch) {
-        globalMatch = FilterOperators['contains'](this.resolveFieldData(value, col.name), filter);
+        globalMatch = ExpressionOperators['contains'](this.resolveFieldData(value, col.name), filter);
       }
     }
     if (filter) {
@@ -178,6 +193,50 @@ export class AppComponent implements OnDestroy {
     let rowFilterFunc = notFilter.Expression;
     let presetFilterFunc = (this.filterExpression ? this.parseFilter(this.filterExpression) : (value) => true);
     return it => presetFilterFunc(it) && rowFilterFunc(it) && this.keywordFilter(it, filter);
+  }
+
+  private filterMetaConvertToExpressionTree(root: Expression, parent: Expression, filterMetas: FilterMetadata[]) {
+    let firstMeta = filterMetas[0];
+    let reverseMetas = filterMetas.reverse();
+    let prevNode: Expression = parent;
+    while (reverseMetas.length > 0) {
+      let nextLastMeta = reverseMetas.shift();
+      let nextLogicNode: Expression, nextOperatorNode: Expression;
+      if (firstMeta != nextLastMeta) {
+        nextLogicNode = { //逻辑结点
+          nodeType: nextLastMeta.concat == 'none' ? 'and' : nextLastMeta.concat,
+          expressions: []
+        };
+        if (!root) { root = nextLogicNode; }
+      }
+      if (!nextLastMeta.IsChildExpress)
+        nextOperatorNode = { //操作结点
+          nodeType: nextLastMeta.operators,
+          property: nextLastMeta.field,
+          expressions: [],
+          rightExpression: {
+            nodeType: 'constant',
+            value: nextLastMeta.value
+          }
+        };
+      if (nextLogicNode && !nextLastMeta.IsChildExpress)
+        nextLogicNode.expressions.push(nextOperatorNode);
+      if (prevNode) {
+        if (nextLogicNode)
+          prevNode.expressions.push(nextLogicNode);
+        else
+          prevNode.expressions.push(nextOperatorNode);
+        if (firstMeta == nextLastMeta) prevNode.expressions = prevNode.expressions.reverse();
+      }
+      prevNode = nextLogicNode;
+      if (nextLastMeta.childs && nextLastMeta.childs.length > 0)
+        this.filterMetaConvertToExpressionTree(root, prevNode, nextLastMeta.childs);
+    }
+    root.expressions = root.expressions.reverse();
+    if (root.expressions.length > 1)
+      return root;
+    else
+      root.expressions[0];
   }
   private RecursionGenerateExpression(root: FilterMetadata) {
     //生成相应的表达式树
@@ -220,9 +279,10 @@ export class AppComponent implements OnDestroy {
     let filterValue = filterMeta.value,
       filterField = filterMeta.field,
       filterMatchMode = filterMeta.operators || 'startsWith';
-    let filterConstraint = FilterOperators[filterMatchMode];
+    let filterConstraint = ExpressionOperators[filterMatchMode];
     filterMeta.Expression = it => {
-      let dataFieldValue = filterMeta.customValue ? filterMeta.customValue(it) : this.resolveFieldData(it, filterField);
+      let dataFieldValue = filterMeta.customValue ? filterMeta.customValue(it) :
+        this.resolveFieldData(it, filterField);
       return filterConstraint && filterConstraint(dataFieldValue, filterValue);
     }
   }
@@ -637,7 +697,7 @@ export interface FilterMetadata {
   field?: string;
   operators?: string;
   value?;
-  customValue?: Function
+  customValue?: Function;
   concat?: string;
   invert?: boolean;
   isGroup?: boolean;
@@ -648,7 +708,7 @@ export interface FilterMetadata {
   IsProcessDone?: boolean;
   IsSetOperation?: boolean;
   Expression?;
-  regExp?: RegExp
+  regExp?: RegExp;
 }
 
 interface ITreeTableRow {

@@ -1,6 +1,6 @@
 import { gt, gte, lt, lte, eq, isUndefined, isNull } from 'lodash';
 
-export class FilterOperators {
+export class ExpressionOperators {
     static greaterThan(value, filter) {
         if (isUndefined(filter) || isNull(filter) || filter.toString().trim() === '') {
             return true;
@@ -120,14 +120,44 @@ export class FilterOperators {
             return (filterValue >= left) && (filterValue <= right);
     }
     static notBetween(value, filter: any[]) {
-        return !FilterOperators.between(value, filter);
+        return !ExpressionOperators.between(value, filter);
     }
     /// <summary>
     /// （支持：1,2,3 或 1-3；如果不符合前面规则，即认为模糊查询
     /// </summary>
-    static fuzzy(value, fitler) { }
+    static fuzzy(value, filter: string) {
+        if (filter === undefined || filter === null || filter.length === 0) {
+            return true;
+        }
+        if (value === undefined || value === null) {
+            return false;
+        }
+        filter = filter.trim();
+        let valueList: string[] = [];
+        let splits: string[] = filter.split(',');
+        if (splits.length > 1) {
+            splits.forEach(v => {
+                let val = v.trim();
+                if (val.length > 0) {
+                    valueList.push(val);
+                }
+            });
+            return ExpressionOperators.in(value, valueList);
+        }
 
-    static notFuzzy(value, filter) { }
+        let index_minus = filter.indexOf('-');
+        if (index_minus > 0 && index_minus < filter.length - 1) {
+            let left = filter.substr(0, index_minus).trim();
+            let right = filter.substr(index_minus + 1).trim();
+            return ExpressionOperators.between(value, [left, right]);
+        }
+
+        return ExpressionOperators.like(value, filter);
+    }
+
+    static notFuzzy(value, filter) {
+        return !ExpressionOperators.fuzzy(value, filter);
+    }
 
     static regExp(value, filter) {
         return filter.test(value);
@@ -271,4 +301,4 @@ export class FilterOperators {
     }
 }
 
-window['FilterOps'] = FilterOperators;
+window['FilterOps'] = ExpressionOperators;

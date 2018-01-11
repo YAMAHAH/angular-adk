@@ -1,124 +1,85 @@
-import { FilterOperators } from './filterOperators';
 import { isFunction } from 'util';
+import { ExpressionOperators } from './ExpressionOperators';
 
 export class ExprressionBuilder {
-    visitAndExpression(exprNode: ExpressionNode) {
-        const conditions = exprNode.expressions.map(expr => this.visitExpression(expr));
+    visitAndExpression(exprNode: Expression) {
+        const conditions = exprNode.expressions.map(expr => this.lambdaExpression(expr));
         return it => conditions.every(c => c(it));
     }
 
-    visitOrExpression(exprNode: ExpressionNode) {
-        const conditions = exprNode.expressions.map(expr => this.visitExpression(expr));
+    visitOrExpression(exprNode: Expression) {
+        const conditions = exprNode.expressions.map(expr => this.lambdaExpression(expr));
         return it => conditions.some(c => c(it));
     }
 
-    visitNotExpression(exprNode: ExpressionNode) {
+    visitNotExpression(exprNode: Expression) {
         return it => {
-            const condition = this.visitExpression(exprNode.subExpression);
+            const condition = this.lambdaExpression(exprNode.rightExpression);
             return !condition(it);
         }
     }
 
-    visitUnaryExpression(exprNode: ExpressionNode) {
-        switch (exprNode.node) {
+    visitUnaryExpression(exprNode: Expression) {
+        switch (exprNode.nodeType) {
             case 'and': return this.visitAndExpression(exprNode);
             case 'or': return this.visitOrExpression(exprNode);
             case 'not': return this.visitNotExpression(exprNode);
-            default: break;
         }
     }
 
-    visitBinaryExpression(exprNode: ExpressionNode) {
-        switch (exprNode.node) {
-            case 'eq': return this.visitEqExpression(exprNode);
-            case 'ne': return this.visitNeExpression(exprNode);
-            case 'lt': return this.visitLtExpression(exprNode);
-            case 'like': return this.visitLikeExpression(exprNode);
-            case 'between': return this.visitBetweenExpression(exprNode);
-            default: break;
-        }
+    visitBinaryExpression(exprNode: Expression) {
+        let leftFunc = this.visitPropertyValueExpression(exprNode);
+        let rightValue = this.visitConstantExpression(exprNode.rightExpression);
+        return it => this.operators[exprNode.nodeType](leftFunc(it), rightValue);
     }
 
-    visitExpression(exprNode: ExpressionNode) {
-        switch (exprNode.node) {
-            case 'and': return this.visitUnaryExpression(exprNode);
-            case 'or': return this.visitUnaryExpression(exprNode);
-            case 'not': return this.visitUnaryExpression(exprNode);
-            // case 'eq': return this.visitBinaryExpression(exprNode);
-            // case 'ne': return this.visitBinaryExpression(exprNode);
-            // case 'lt': return this.visitBinaryExpression(exprNode);
-            // case 'like': return this.visitBinaryExpression(exprNode);
-            // case 'between': return this.visitBinaryExpression(exprNode);
-        }
-        return this.visitNodeExpression(exprNode);
+    visitPropertyValueExpression(exprNode: Expression) {
+        return it => isFunction(exprNode.value) ?
+            exprNode.value(it) :
+            this.resolveProperyValue(it, exprNode.property);
     }
 
-    visitPropertyValueExpression(exprNode: ExpressionNode) {
-        return it => isFunction(exprNode.value) ? exprNode.value(it) :
-            this.resolveFieldData(it, exprNode.property);
-    }
-
-    visitEqExpression(exprNode: ExpressionNode) {
-        let leftFunc = this.visitPropertyValueExpression(exprNode);
-        let rightValue = this.visitConstantExpression(exprNode.subExpression)
-        return it => leftFunc(it) == rightValue;  //TODO 这里根据字符串或者数字分开处理
-    }
-
-    visitNeExpression(exprNode: ExpressionNode) {
-        let leftFunc = this.visitPropertyValueExpression(exprNode);
-        let rightValue = this.visitConstantExpression(exprNode.subExpression);
-        return it => leftFunc(it) != rightValue;
-    }
-    visitLtExpression(exprNode: ExpressionNode) {
-        let leftFunc = this.visitPropertyValueExpression(exprNode);
-        let rightValue = this.visitConstantExpression(exprNode.subExpression);
-        return it => leftFunc(it) < rightValue;
-    }
-    visitLikeExpression(exprNode: ExpressionNode) {
-        let leftFunc = this.visitPropertyValueExpression(exprNode);
-        let rightValue = this.visitConstantExpression(exprNode.subExpression);
-        return it => FilterOperators.contains(leftFunc(it), rightValue);
-    }
-    visitBetweenExpression(exprNode: ExpressionNode) {
-        let leftFunc = this.visitPropertyValueExpression(exprNode);
-        let rightValue = this.visitConstantExpression(exprNode.subExpression);
-        return it => FilterOperators.between(leftFunc(it), rightValue);
-    }
-    operators = {
-        eq: FilterOperators.equals,
-        ne: FilterOperators.notEquals,
-        lt: FilterOperators.lessThan,
-        nlt: FilterOperators.notLessThan,
-        lte: FilterOperators.lessThanOrEqual,
-        nlte: FilterOperators.notLessThanOrEqual,
-        gt: FilterOperators.greaterThan,
-        ngt: FilterOperators.notGreaterThan,
-        gte: FilterOperators.greaterThanOrEquals,
-        ngte: FilterOperators.notGreaterThanOrEquals,
-        like: FilterOperators.contains,
-        notlike: FilterOperators.notLike,
-        between: FilterOperators.between,
-        notbetween: FilterOperators.notBetween,
-        in: FilterOperators.in,
-        notin: FilterOperators.notIn,
-        startswith: FilterOperators.startsWith,
-        notstartswith: FilterOperators.notStartsWith,
-        endswith: FilterOperators.endsWith,
-        notendswith: FilterOperators.notEndsWith,
-        isnull: FilterOperators.isNull,
-        isnotnull: FilterOperators.isNotNull
-    }
-    visitNodeExpression(exprNode: ExpressionNode) {
-        let leftFunc = this.visitPropertyValueExpression(exprNode);
-        let rightValue = this.visitConstantExpression(exprNode.subExpression);
-        return it => this.operators[exprNode.node](leftFunc(it), rightValue);
-    }
-
-
-    visitConstantExpression(exprNode: ExpressionNode) {
+    visitConstantExpression(exprNode: Expression) {
         return exprNode.value;
     }
-    private resolveFieldData(data, field: string) {
+
+    lambdaExpression(exprNode: Expression) {
+        if (['not', 'and', 'or'].includes(exprNode.nodeType))
+            return this.visitUnaryExpression(exprNode);
+        else
+            return this.visitBinaryExpression(exprNode);
+    }
+    operators = {
+        eq: ExpressionOperators.equals,
+        ne: ExpressionOperators.notEquals,
+        lt: ExpressionOperators.lessThan,
+        nlt: ExpressionOperators.notLessThan,
+        lte: ExpressionOperators.lessThanOrEqual,
+        nlte: ExpressionOperators.notLessThanOrEqual,
+        gt: ExpressionOperators.greaterThan,
+        ngt: ExpressionOperators.notGreaterThan,
+        gte: ExpressionOperators.greaterThanOrEquals,
+        ngte: ExpressionOperators.notGreaterThanOrEquals,
+        like: ExpressionOperators.like,
+        notlike: ExpressionOperators.notLike,
+        contains: ExpressionOperators.contains,
+        notcontains: ExpressionOperators.notContains,
+        between: ExpressionOperators.between,
+        notbetween: ExpressionOperators.notBetween,
+        in: ExpressionOperators.in,
+        notin: ExpressionOperators.notIn,
+        startswith: ExpressionOperators.startsWith,
+        notstartswith: ExpressionOperators.notStartsWith,
+        endswith: ExpressionOperators.endsWith,
+        notendswith: ExpressionOperators.notEndsWith,
+        isnull: ExpressionOperators.isNull,
+        isnotnull: ExpressionOperators.isNotNull,
+        fuzzy: ExpressionOperators.fuzzy,
+        notfuzzy: ExpressionOperators.notFuzzy
+    }
+
+
+    private resolveProperyValue(data, field: string) {
         if (data && field) {
             if (field.indexOf('.') == -1) {
                 return data[field];
@@ -143,7 +104,7 @@ export class ExprressionBuilder {
 
 export function filter(source: any[], exprNode) {
     let exprBuilder = new ExprressionBuilder();
-    const expr = exprBuilder.visitExpression(exprNode);
+    const expr = exprBuilder.lambdaExpression(exprNode);
     return source.filter(expr);
 }
 
@@ -153,69 +114,62 @@ const targetList = [
 ]
 
 //表示 !(it.name === 'Bill') && it.gender === 'm'
-export interface ExpressionNode {
-    node: string;
+export interface Expression {
+    nodeType: string;
     property?: string;
     value?;
-    subExpression?: ExpressionNode;
-    expressions?: ExpressionNode[];
-}
-export interface UnaryNode extends ExpressionNode {
-
-}
-export interface BinaryNode extends ExpressionNode {
-
+    rightExpression?: Expression;
+    expressions?: Expression[];
 }
 
-
-const yourExpr: ExpressionNode = {
-    node: 'and',
+const yourExpr: Expression = {
+    nodeType: 'and',
     expressions: [
         {
-            node: 'not',
-            subExpression: {
-                node: 'eq',
+            nodeType: 'not',
+            rightExpression: {
+                nodeType: 'eq',
                 property: 'age',
-                subExpression: {
-                    node: 'constant',
+                rightExpression: {
+                    nodeType: 'constant',
                     value: 28
                 }
             }
         },
         {
-            node: 'eq',
+            nodeType: 'eq',
             property: 'gender',
-            subExpression: {
-                node: 'constant',
+            rightExpression: {
+                nodeType: 'constant',
                 value: 'm'
             }
         }
     ]
 }
 
-const expr2: ExpressionNode = {
-    node: 'and',
+const expr2: Expression = {
+    nodeType: 'and',
     expressions: [
         {
-            node: 'eq',
+            nodeType: 'eq',
             property: 'age',
-            subExpression: {
-                node: 'constant',
+            rightExpression: {
+                nodeType: 'constant',
                 value: 28
             }
         },
         {
-            node: 'eq',
+            nodeType: 'eq',
             property: 'gender',
-            subExpression: {
-                node: 'constant',
+            rightExpression: {
+                nodeType: 'constant',
                 value: 'f'
             }
         }
     ]
 }
 
-const results = filter(targetList, yourExpr)
-console.log(results);
+// const results = filter(targetList, yourExpr)
+// console.log(results);
 
 // and(not(eq("age", 28)), eq("gender", constant("m")))
