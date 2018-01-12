@@ -30,7 +30,7 @@ export class ExprressionBuilder {
     visitBinaryExpression(exprNode: Expression) {
         let leftFunc = this.visitPropertyValueExpression(exprNode);
         let rightValue = this.visitConstantExpression(exprNode.rightExpression);
-        return it => this.operators[exprNode.nodeType](leftFunc(it), rightValue);
+        return it => this.operators[exprNode.nodeType.toLowerCase()](leftFunc(it), rightValue);
     }
 
     visitPropertyValueExpression(exprNode: Expression) {
@@ -120,6 +120,7 @@ export interface Expression {
     value?;
     rightExpression?: Expression;
     expressions?: Expression[];
+    priority?:number;
 }
 
 const yourExpr: Expression = {

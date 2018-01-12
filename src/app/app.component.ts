@@ -3,6 +3,7 @@ import { JsUtils } from './helpers/JsUtils';
 import { gt, gte, lt, lte, eq, isEmpty } from 'lodash';
 import { ExprressionBuilder, Expression } from './helpers/ExpressionBuilder';
 import { ExpressionOperators } from './helpers/ExpressionOperators';
+import { ValueTransformer } from '@angular/compiler/src/util';
 
 @Component({
   selector: 'app-root',
@@ -20,31 +21,96 @@ export class AppComponent implements OnDestroy {
     let filters: FilterMetadata[] = [
       { field: 'gono', value: 'P010102156', operators: 'like' },
       {
-        field: "childQuery", value: "", operators: "none", concat: 'and', IsChildExpress: true,
-        childs: [
+        field: "childQuery", value: "", operators: "none", concat: 'and', IsChildExpress: true, childs: [
           { field: 'goname1', value: '铁板牙', operators: 'contains1', concat: 'none' },
-          { field: 'goname2', value: '圆头十字', operators: 'contains2', concat: 'or' }
+          { field: 'goname2', value: '圆头十字', operators: 'contains2', concat: 'or' },
+          { field: 'goname3', value: '圆头十字', operators: 'contains3', concat: 'and' }
         ]
       },
       { field: 'goname', value: '铁板牙', operators: 'contains', concat: 'and' },
       { field: 'ord', value: '5', operators: 'startsWith', concat: 'or' },
+      // {
+      //   field: 'b11', value: "", operators: "none", concat: 'or', IsChildExpress: true, childs: [
+      //     {
+      //       field: 'b111', value: "", operators: "none", concat: 'or', IsChildExpress: true, childs: [
+      //         { field: 'b122', value: "b122", operators: "like-b122" },
+      //         { field: 'c222', value: "c222", operators: "like-c222", concat: 'or' },
+      //         { field: 'c333', value: "c333", operators: "like-c333", concat: 'or' }
+      //       ]
+      //     },
+      //     {
+      //       field: 'b1223', value: "b1223", operators: "like-b1223", concat: "and"
+      //     },
+      //   ]
+      // }
+    ];
+    // let testfilter2: FilterMetadata[] = [
+    //   {
+    //     field: 'A', operators: 'A', value: 'p0101'
+    //   },
+    //   {
+    //     field: 'CE2', concat: 'and', IsChildExpress: true, childs: [
+    //       {
+    //         field: "CE1", operators: 'CE1', concat: 'or', IsChildExpress: true, childs: [
+    //           { field: 'B', operators: 'B', value: 'b11' },
+    //           { field: 'C', operators: 'C', value: '132', concat: 'or' },
+    //           { field: 'C2', operators: 'C2', value: '1322', concat: 'or' }
+    //         ]
+    //       },
+    //       { field: 'F', operators: "F", concat: 'and', value: 'ffff' }
+    //     ]
+    //   },
+
+    //   { field: 'D', operators: 'D', value: 130, concat: 'or' },
+    //   { field: 'E', operators: 'E', value: 343, concat: 'and' },
+    // ]; // 10
+    // let testfilter2: FilterMetadata[] = [
+    //   {
+    //     field: 'CE2', concat: 'and', IsChildExpress: true, childs: [
+    //       {
+    //         field: "CE1", operators: 'CE1', concat: 'or', IsChildExpress: true, childs: [
+    //           { field: 'B', operators: 'B', value: 'b11' },
+    //           { field: 'C', operators: 'C', value: '132', concat: 'or' },
+    //           { field: 'C2', operators: 'C2', value: '1322', concat: 'or' }
+    //         ]
+    //       },
+    //       { field: 'F', operators: "F", concat: 'and', value: 'ffff' }
+    //     ]
+    //   },
+    //   {
+    //     field: 'A', operators: 'A', value: 'p0101'
+    //   },
+    //   { field: 'D', operators: 'D', value: 130, concat: 'or' },
+    //   { field: 'E', operators: 'E', value: 343, concat: 'and' },
+    // ]; // 20
+    let testfilter2: FilterMetadata[] = [
       {
-        field: 'b11', value: "", operators: "none", concat: 'or', IsChildExpress: true, childs: [
+        field: 'A', operators: 'A', value: 'p0101'
+      },
+      {
+        field: 'CE2', concat: 'and', IsChildExpress: true, childs: [
           {
-            field: 'b111', value: "", operators: "none", concat: 'or', IsChildExpress: true, childs: [
-              {
-                field: 'b122', value: "b122", operators: "like-b122"
-              },
-              { field: 'c222', value: "c222", operators: "like-c222", concat: 'or', },
-              { field: 'c333', value: "c333", operators: "like-c333", concat: 'or', }
+            field: "CE1", operators: 'CE1', concat: 'or', IsChildExpress: true, childs: [
+              { field: 'B', operators: 'B', value: 'b11' },
+              { field: 'C', operators: 'C', value: '132', concat: 'or' },
+              { field: 'C2', operators: 'C2', value: '1322', concat: 'and' }
             ]
           },
-          {
-            field: 'b1223', value: "b1223", operators: "like-b1223", concat: "and"
-          }]
-      }
+          { field: 'F', operators: "F", concat: 'and', value: 'ffff' }
+        ]
+      },
+      {
+        field: 'CE3', concat: 'and', IsChildExpress: true, childs: [
+          { field: 'CE31', operators: 'CE31', value: 'b11' },
+          { field: 'CE32', operators: 'CE32', value: '132', concat: 'or' },
+          { field: 'CE33', operators: 'CE33', value: '1322', concat: 'or' }
+        ]
+      },
+      { field: 'E', operators: 'E', value: 343, concat: 'and' },
+      { field: 'D', operators: 'D', value: 130, concat: 'or' },
+
     ];
-    let rootExprNode = this.filterMetaConvertToExpressionTree(null, null, filters);
+    let rootExprNode = this.filterMetaConvertToExpressionTree(testfilter2, true);
     console.log(rootExprNode);
     //gono like 'p010102156' && ((ord eq 8) || (ord between 10 23))
     //((ord eq 8) || (ord between 10 23)) && gono like 'p010102156' 
@@ -115,11 +181,30 @@ export class AppComponent implements OnDestroy {
     let customFilterFunc = it => this.filterConstraints.contains(it.gono, 'P010102156') &&
       (this.filterConstraints.contains(it.goname, '铁板牙') || this.filterConstraints.contains(it.goname, "圆头十字"))
       && this.filterConstraints.contains(it.goname, "铁板牙") || this.filterConstraints.startsWith(it.gono, "R001");
-    let betweenFunc = it => ExpressionOperators.between(it.ord, [1, 12]);
+    let betweenFunc = it => true  //ExpressionOperators.between(it.ord, [1, 12]);
     let filterDatas = this.treeTableData.filter(it => filterFunc(it) && betweenFunc(it));
-    console.log(filterDatas);
+    let filters: FilterMetadata[] = [
+      { field: 'gono', value: 'P010102156H', operators: 'contains' },
+      {
+        field: "childQuery", value: "", operators: "none", concat: 'and', IsChildExpress: true,
+        childs: [
+          { field: 'goname', value: '铁板牙', operators: 'contains', concat: 'none' },
+          { field: 'goname', value: '圆头十字', operators: 'contains', concat: 'or' }
+        ]
+      },
+      { field: 'goname', value: '铁板牙', operators: 'contains', concat: 'and' },
+
+      { field: 'gono', value: 'R001', operators: 'startswith', concat: 'or' }
+    ];
+    let exprNode = this.filterMetaConvertToExpressionTree(filters);
+    let exprBuilder = new ExprressionBuilder();
+    const expr = exprBuilder.lambdaExpression(exprNode);
+    let filterDatas2 = this.treeTableData.filter(expr);
+
     let runTime = new Date().getTime();
     console.log(runTime - startTime);
+    console.log(filterDatas);
+    console.log(filterDatas2);
 
     JsUtils.debounce(() => console.log('debounce'), 300)();
     console.log('string', JsUtils.isString('mystr'));
@@ -209,47 +294,59 @@ export class AppComponent implements OnDestroy {
     let presetFilterFunc = (this.filterExpression ? this.parseFilter(this.filterExpression) : (value) => true);
     return it => presetFilterFunc(it) && rowFilterFunc(it) && this.keywordFilter(it, filter);
   }
-
-  private filterMetaConvertToExpressionTree(root: Expression, parent: Expression, filterMetas: FilterMetadata[]) {
-    let firstMeta = filterMetas[0];
-    let reverseMetas = filterMetas.reverse();
-    let prevNode: Expression = parent;
-    let prevMeta: FilterMetadata;
+  logicPriority = { not: 3, and: 2, or: 1 };
+  private filterMetaConvertToExpressionTree(filterMetas: FilterMetadata[], allowMerge: boolean = true,
+    root: Expression = null, parentLogicNode: Expression = null) {
+    let firstFilterMeta = filterMetas[0];
+    let nots = filterMetas.filter(it => it.concat == 'not' && it != firstFilterMeta);
+    let ands = filterMetas.filter(it => it.concat == 'and' && it != firstFilterMeta);
+    let ords = filterMetas.filter(it => it.concat == 'or' && it != firstFilterMeta);
+    let reverseMetas = [firstFilterMeta].concat(nots, ands, ords).reverse();
+    let prevLogicNode: Expression = parentLogicNode;
     while (reverseMetas.length > 0) {
-      let nextLastMeta = reverseMetas.shift();
+      let nextFilterMeta = reverseMetas.shift();
       let nextLogicNode: Expression, nextOperatorNode: Expression;
-      if ((firstMeta != nextLastMeta || (firstMeta == nextLastMeta && nextLastMeta.IsChildExpress))) {
+      // if (firstFilterMeta != nextFilterMeta || (firstFilterMeta == nextFilterMeta && nextFilterMeta.IsChildExpress)) {
+      let isFirstExpr = (firstFilterMeta == nextFilterMeta);
+      let isExistedLogic = allowMerge && !nextFilterMeta.IsChildExpress && prevLogicNode && nextFilterMeta.concat == prevLogicNode.nodeType;
+
+      if (isFirstExpr || isExistedLogic)
+        nextLogicNode = null;
+      else {
+        let ndType = (nextFilterMeta.concat == undefined || nextFilterMeta.concat == 'none') ? 'and' : nextFilterMeta.concat;
         nextLogicNode = { //逻辑结点
-          nodeType: nextLastMeta.concat == 'none' ? 'and' : nextLastMeta.concat,
-          expressions: []
+          nodeType: ndType,
+          expressions: [],
+          priority: this.logicPriority[ndType]
         };
         if (!root) { root = nextLogicNode; }
       }
-      if (!nextLastMeta.IsChildExpress)
-        nextOperatorNode = { //操作结点
-          nodeType: nextLastMeta.operators,
-          property: nextLastMeta.field,
+      //}
+
+      if (!nextFilterMeta.IsChildExpress) //非虚拟结点时创建操作结点
+        nextOperatorNode = {
+          nodeType: nextFilterMeta.operators,
+          property: nextFilterMeta.field,
           expressions: [],
           rightExpression: {
             nodeType: 'constant',
-            value: nextLastMeta.value
+            value: nextFilterMeta.value
           }
         };
-      if (nextLogicNode) //&& !nextLastMeta.IsChildExpress
+      if (nextLogicNode) {
         nextOperatorNode && nextLogicNode.expressions.unshift(nextOperatorNode);
-
-      if (prevNode) {
-        if (nextLogicNode)
-          nextLogicNode && prevNode.expressions.unshift(nextLogicNode);
-        else
-          nextOperatorNode && prevNode.expressions.unshift(nextOperatorNode);
       }
-      prevNode = nextLogicNode;
-      prevMeta = nextLastMeta;
-      if (nextLastMeta.childs && nextLastMeta.childs.length > 0)
-        this.filterMetaConvertToExpressionTree(root, prevNode, nextLastMeta.childs);
+
+      if (prevLogicNode) {
+        if (nextLogicNode)
+          nextLogicNode && prevLogicNode.expressions.unshift(nextLogicNode);
+        else
+          nextOperatorNode && prevLogicNode.expressions.unshift(nextOperatorNode);
+      }
+      prevLogicNode = nextLogicNode ? nextLogicNode : prevLogicNode;
+      if (nextFilterMeta.childs && nextFilterMeta.childs.length > 0)
+        this.filterMetaConvertToExpressionTree(nextFilterMeta.childs, allowMerge, root, prevLogicNode);
     }
-    root.expressions = root.expressions.reverse();
     if (root.expressions.length > 1)
       return root;
     else
