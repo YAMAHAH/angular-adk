@@ -1,7 +1,7 @@
 import { isFunction } from 'util';
 import { ExpressionOperators } from './ExpressionOperators';
 
-export class ExprressionBuilder {
+export class ExprressionVisitor {
     visitAndExpression(exprNode: Expression) {
         const conditions = exprNode.expressions.map(expr => this.lambdaExpression(expr));
         return it => conditions.every(c => c(it));
@@ -77,6 +77,10 @@ export class ExprressionBuilder {
         fuzzy: ExpressionOperators.fuzzy,
         notfuzzy: ExpressionOperators.notFuzzy
     }
+    // and(not(eq("age", 28)), eq("gender", constant("m")))
+    // function not(subexpr: UnaryNode) { return new NotExprNode(subexpr); }
+    // class Node; class UnaryNode: Node, class NotExprNode: UnaryNode
+
 
 
     private resolveProperyValue(data, field: string) {
@@ -103,7 +107,7 @@ export class ExprressionBuilder {
 }
 
 export function filter(source: any[], exprNode) {
-    let exprBuilder = new ExprressionBuilder();
+    let exprBuilder = new ExprressionVisitor();
     const expr = exprBuilder.lambdaExpression(exprNode);
     return source.filter(expr);
 }
@@ -116,11 +120,13 @@ const targetList = [
 //表示 !(it.name === 'Bill') && it.gender === 'm'
 export interface Expression {
     nodeType: string;
+    dataType?: string;
+    method?: Function;
     property?: string;
     value?;
     rightExpression?: Expression;
     expressions?: Expression[];
-    priority?:number;
+    priority?: number;
 }
 
 const yourExpr: Expression = {

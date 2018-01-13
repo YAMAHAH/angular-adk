@@ -1,9 +1,10 @@
 import { Component, OnDestroy } from '@angular/core';
 import { JsUtils } from './helpers/JsUtils';
 import { gt, gte, lt, lte, eq, isEmpty } from 'lodash';
-import { ExprressionBuilder, Expression } from './helpers/ExpressionBuilder';
+import { ExprressionVisitor, Expression } from './helpers/ExpressionBuilder';
 import { ExpressionOperators } from './helpers/ExpressionOperators';
 import { ValueTransformer } from '@angular/compiler/src/util';
+import { QueryBuilderConfig } from './query-builder/query-builder.interfaces';
 
 @Component({
   selector: 'app-root',
@@ -21,7 +22,7 @@ export class AppComponent implements OnDestroy {
     let filters: FilterMetadata[] = [
       { field: 'gono', value: 'P010102156', operators: 'like' },
       {
-        field: "childQuery", value: "", operators: "none", concat: 'and', IsChildExpress: true, childs: [
+        concat: 'and', IsChildExpress: true, childs: [
           { field: 'goname1', value: '铁板牙', operators: 'contains1', concat: 'none' },
           { field: 'goname2', value: '圆头十字', operators: 'contains2', concat: 'or' },
           { field: 'goname3', value: '圆头十字', operators: 'contains3', concat: 'and' }
@@ -84,11 +85,14 @@ export class AppComponent implements OnDestroy {
     //   { field: 'E', operators: 'E', value: 343, concat: 'and' },
     // ]; // 20
     let testfilter2: FilterMetadata[] = [
+      // {
+      //   field: 'A', operators: 'A', value: 'p0101'
+      // },
+      // {
+      //   field: 'B', operators: 'B', value: 'p0102', concat: 'or'
+      // },
       {
-        field: 'A', operators: 'A', value: 'p0101'
-      },
-      {
-        field: 'CE2', concat: 'and', IsChildExpress: true, childs: [
+        field: 'CE2', concat: 'and', not: true, IsChildExpress: true, childs: [
           {
             field: "CE1", operators: 'CE1', concat: 'or', IsChildExpress: true, childs: [
               { field: 'B', operators: 'B', value: 'b11' },
@@ -99,14 +103,14 @@ export class AppComponent implements OnDestroy {
           { field: 'F', operators: "F", concat: 'and', value: 'ffff' }
         ]
       },
-      {
-        field: 'CE3', concat: 'and', IsChildExpress: true, childs: [
-          { field: 'CE31', operators: 'CE31', value: 'b11' },
-          { field: 'CE32', operators: 'CE32', value: '132', concat: 'or' },
-          { field: 'CE33', operators: 'CE33', value: '1322', concat: 'or' }
-        ]
-      },
-      { field: 'E', operators: 'E', value: 343, concat: 'and' },
+      // {
+      //   field: 'CE3', concat: 'and', not: true, IsChildExpress: true, childs: [
+      //     { field: 'CE31', operators: 'CE31', value: 'b11' },
+      //     { field: 'CE32', operators: 'CE32', value: '132', not: true, concat: 'or' },
+      //     { field: 'CE33', operators: 'CE33', value: '1322', concat: 'or' }
+      //   ]
+      // },
+      // { field: 'E', operators: 'E', value: 343, concat: 'and' },
       { field: 'D', operators: 'D', value: 130, concat: 'or' },
 
     ];
@@ -156,7 +160,7 @@ export class AppComponent implements OnDestroy {
         value: 'p010102156'
       }
     };
-    let exprBuilder = new ExprressionBuilder();
+    let exprBuilder = new ExprressionVisitor();
     const expr = exprBuilder.lambdaExpression(exprNode);
     let filterDatas = this.treeTableData.filter(expr);
     console.log(filterDatas);
@@ -197,7 +201,7 @@ export class AppComponent implements OnDestroy {
       { field: 'gono', value: 'R001', operators: 'startswith', concat: 'or' }
     ];
     let exprNode = this.filterMetaConvertToExpressionTree(filters);
-    let exprBuilder = new ExprressionBuilder();
+    let exprBuilder = new ExprressionVisitor();
     const expr = exprBuilder.lambdaExpression(exprNode);
     let filterDatas2 = this.treeTableData.filter(expr);
 
@@ -236,7 +240,7 @@ export class AppComponent implements OnDestroy {
   filters: FilterMetadata[] = [
     { field: 'gono', value: 'P010102156', operators: 'contains' },
     {
-      field: "childQuery", value: "", operators: "none", concat: 'and', IsChildExpress: true,
+      concat: 'and', IsChildExpress: true, not: true,
       childs: [
         { field: 'goname', value: '铁板牙', operators: 'contains', concat: 'none' },
         { field: 'goname', value: '圆头十字', operators: 'contains', concat: 'or' }
@@ -285,7 +289,7 @@ export class AppComponent implements OnDestroy {
   genFilterExpression(filter) {
     let root: FilterMetadata = { IsChildExpress: true };
     root.childs = this.filters;
-    let notFilter: FilterMetadata = { IsChildExpress: true, invert: true };
+    let notFilter: FilterMetadata = { IsChildExpress: true, not: true };
     notFilter.childs = [root];
     let rootFilter: FilterMetadata = { IsChildExpress: true };
     rootFilter.childs = [notFilter, { field: 'ord', value: [2, 6], operators: 'between' }];
@@ -295,21 +299,43 @@ export class AppComponent implements OnDestroy {
     return it => presetFilterFunc(it) && rowFilterFunc(it) && this.keywordFilter(it, filter);
   }
   logicPriority = { not: 3, and: 2, or: 1 };
+  private createLogicNode(nodeType, priority, subExpressions = []) {
+    return {
+      nodeType: nodeType,
+      expressions: subExpressions,
+      priority: priority
+    };
+  }
+  private createOpeatorNode(nodeType, property, value) {
+    return {
+      nodeType: nodeType,
+      property: property,
+      expressions: [],
+      rightExpression: {
+        nodeType: 'constant',
+        value: value
+      }
+    };
+  }
   private filterMetaConvertToExpressionTree(filterMetas: FilterMetadata[], allowMerge: boolean = true,
     root: Expression = null, parentLogicNode: Expression = null) {
     let firstFilterMeta = filterMetas[0];
-    let nots = filterMetas.filter(it => it.concat == 'not' && it != firstFilterMeta);
-    let ands = filterMetas.filter(it => it.concat == 'and' && it != firstFilterMeta);
-    let ords = filterMetas.filter(it => it.concat == 'or' && it != firstFilterMeta);
-    let reverseMetas = [firstFilterMeta].concat(nots, ands, ords).reverse();
+    let reverseMetas = filterMetas;
     let prevLogicNode: Expression = parentLogicNode;
     while (reverseMetas.length > 0) {
-      let nextFilterMeta = reverseMetas.shift();
-      let nextLogicNode: Expression, nextOperatorNode: Expression;
-      // if (firstFilterMeta != nextFilterMeta || (firstFilterMeta == nextFilterMeta && nextFilterMeta.IsChildExpress)) {
+      let nextFilterMeta = reverseMetas.pop();
+      let nextLogicNode: Expression, nextOperatorNode: Expression, notNode: Expression;
       let isFirstExpr = (firstFilterMeta == nextFilterMeta);
-      let isExistedLogic = allowMerge && !nextFilterMeta.IsChildExpress && prevLogicNode && nextFilterMeta.concat == prevLogicNode.nodeType;
+      let isExistedLogic = allowMerge && !nextFilterMeta.IsChildExpress &&
+        prevLogicNode && nextFilterMeta.concat == prevLogicNode.nodeType;
 
+      if (nextFilterMeta.not) {
+        notNode = {
+          nodeType: 'not',
+          priority: this.logicPriority['not'],
+          rightExpression: null
+        };
+      }
       if (isFirstExpr || isExistedLogic)
         nextLogicNode = null;
       else {
@@ -319,11 +345,9 @@ export class AppComponent implements OnDestroy {
           expressions: [],
           priority: this.logicPriority[ndType]
         };
-        if (!root) { root = nextLogicNode; }
+        if (!root) { root = nextFilterMeta.not ? notNode : nextLogicNode; }
       }
-      //}
-
-      if (!nextFilterMeta.IsChildExpress) //非虚拟结点时创建操作结点
+      if (!nextFilterMeta.IsChildExpress) {//非虚拟结点时创建操作结点
         nextOperatorNode = {
           nodeType: nextFilterMeta.operators,
           property: nextFilterMeta.field,
@@ -333,19 +357,59 @@ export class AppComponent implements OnDestroy {
             value: nextFilterMeta.value
           }
         };
+      }
       if (nextLogicNode) {
-        nextOperatorNode && nextLogicNode.expressions.unshift(nextOperatorNode);
+        if (nextOperatorNode) {
+          if (notNode) {
+            notNode.rightExpression = nextOperatorNode;
+            nextLogicNode.expressions.unshift(notNode);
+          } else
+            nextLogicNode.expressions.unshift(nextOperatorNode);
+        }
       }
 
+      let isChildExpAndNot = nextFilterMeta.not && nextFilterMeta.IsChildExpress;
       if (prevLogicNode) {
-        if (nextLogicNode)
-          nextLogicNode && prevLogicNode.expressions.unshift(nextLogicNode);
-        else
-          nextOperatorNode && prevLogicNode.expressions.unshift(nextOperatorNode);
+        if (nextLogicNode) {
+          if (prevLogicNode.nodeType == 'not')
+            prevLogicNode.rightExpression = nextLogicNode;
+          else if (isChildExpAndNot) {
+            notNode.rightExpression = nextLogicNode;
+            prevLogicNode.expressions.unshift(notNode);
+          } else
+            prevLogicNode.expressions.unshift(nextLogicNode);
+
+        } else if (nextOperatorNode) {
+          let nextOpNode;
+          if (notNode) {
+            notNode.rightExpression = nextOperatorNode;
+            nextOpNode = notNode;
+          } else {
+            nextOpNode = nextOperatorNode;
+          }
+          if (prevLogicNode.nodeType == 'not')
+            prevLogicNode.rightExpression = nextOpNode;
+          else
+            prevLogicNode.expressions.unshift(nextOpNode);
+
+        } else if (isChildExpAndNot) {
+          if (prevLogicNode.nodeType == 'not')
+            prevLogicNode.rightExpression = notNode;
+          else
+            prevLogicNode.expressions.unshift(notNode);
+        }
+
       }
-      prevLogicNode = nextLogicNode ? nextLogicNode : prevLogicNode;
+
+      if (nextLogicNode) {
+        if (!isChildExpAndNot)
+          prevLogicNode = nextLogicNode;
+      } else if (isChildExpAndNot)
+        prevLogicNode = notNode;
+
       if (nextFilterMeta.childs && nextFilterMeta.childs.length > 0)
-        this.filterMetaConvertToExpressionTree(nextFilterMeta.childs, allowMerge, root, prevLogicNode);
+        this.filterMetaConvertToExpressionTree(nextFilterMeta.childs, allowMerge, root,
+          isChildExpAndNot ? notNode : prevLogicNode);
     }
     if (root.expressions.length > 1)
       return root;
@@ -406,26 +470,26 @@ export class AppComponent implements OnDestroy {
       let childFunc = childFilter.Expression;
       let func = rootFilter.Expression;
       if (isFirst) {
-        if (childFilter.invert)
+        if (childFilter.not)
           rootFilter.Expression = value => !childFunc(value);
         else
           rootFilter.Expression = value => childFunc(value);
         isFirst = false;
       } else {
         if (childFilter.concat == 'or') {
-          if (childFilter.invert)
+          if (childFilter.not)
             rootFilter.Expression = value => func(value) || !childFunc(value);
           else
             rootFilter.Expression = value => func(value) || childFunc(value);
         } else {
-          if (childFilter.invert)
+          if (childFilter.not)
             rootFilter.Expression = value => func(value) && !childFunc(value);
           else
             rootFilter.Expression = value => func(value) && childFunc(value);
         }
       }
     }
-    if (rootFilter.invert) {
+    if (rootFilter.not) {
       let func = rootFilter.Expression;
       rootFilter.Expression = value => !func(value);
     }
@@ -437,7 +501,7 @@ export class AppComponent implements OnDestroy {
       for (let childFilter of childFilters) {
         let childFunc = childFilter.Expression;
         if (isFirst) {
-          if (childFilter.invert)
+          if (childFilter.not)
             bResult = !childFunc(value);
           else
             bResult = childFunc(value);
@@ -445,20 +509,20 @@ export class AppComponent implements OnDestroy {
         } else {
           if (childFilter.concat == 'or') {
             if (bResult) continue;
-            if (childFilter.invert)
+            if (childFilter.not)
               bResult = bResult || !childFunc(value);
             else
               bResult = bResult || childFunc(value);
           } else {
             if (!bResult) continue;
-            if (childFilter.invert)
+            if (childFilter.not)
               bResult = bResult && !childFunc(value);
             else
               bResult = bResult && childFunc(value);
           }
         }
       }
-      if (rootFilter.invert) {
+      if (rootFilter.not) {
         bResult = !bResult;
       }
       return bResult;
@@ -468,25 +532,25 @@ export class AppComponent implements OnDestroy {
     let childFunc: Function = child.Expression,
       func: Function = root.Expression;
     if (first) {
-      if (child.invert)
+      if (child.not)
         root.Expression = (value) => !childFunc(value);
       else
         root.Expression = value => childFunc(value);
     }
     else if (child.concat == 'and' || child.concat == 'none' || !child.concat) {
-      if (child.invert)
+      if (child.not)
         root.Expression = value => func(value) && !childFunc(value);
       else
         root.Expression = value => func(value) && childFunc(value);
     }
     else if (child.concat == 'or') {
-      if (child.invert)
+      if (child.not)
         root.Expression = value => func(value) || !childFunc(value);
       else
         root.Expression = value => func(value) || childFunc(value);
     }
     if (last) {
-      if (root.invert) {
+      if (root.not) {
         func = root.Expression;
         root.Expression = value => !func(value);
       }
@@ -801,6 +865,49 @@ export class AppComponent implements OnDestroy {
       return true;
     }
   }
+
+  public query = {
+    condition: 'and',
+    rules: [
+      { field: 'age', operator: '<=' },
+      { field: 'birthday', operator: '>=' },
+      {
+        condition: 'or',
+        rules: [
+          { field: 'gender', operator: '=' },
+          { field: 'occupation', operator: 'in' },
+          { field: 'school', operator: 'is null' }
+        ]
+      }
+    ]
+  };
+  public config: QueryBuilderConfig = {
+    fields: {
+      'age': { name: 'Age', type: 'number' },
+      'gender': {
+        name: 'Gender',
+        type: 'category',
+        options: [
+          { name: 'Male', value: 'm' },
+          { name: 'Female', value: 'f' }
+        ]
+      },
+      'name': { name: 'Name', type: 'string' },
+      'educated': { name: 'College Degree?', type: 'boolean' },
+      'birthday': { name: 'Birthday', type: 'date' },
+      'school': { name: 'School', type: 'string', nullable: true },
+      'occupation': {
+        name: 'Occupation',
+        type: 'string',
+        options: [
+          { name: 'Student', value: 'student' },
+          { name: 'Teacher', value: 'teacher' },
+          { name: 'Unemployed', value: 'unemployed' },
+          { name: 'Scientist', value: 'scientist' }
+        ]
+      }
+    }
+  }
 }
 
 
@@ -813,6 +920,7 @@ export interface FilterMetadata {
   value?;
   customValue?: Function;
   concat?: string;
+  not?: boolean;
   invert?: boolean;
   isGroup?: boolean;
   childs?: FilterMetadata[];

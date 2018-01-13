@@ -1,0 +1,281 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+
+namespace CFTC.Base.Framework.DAL.Helper
+{
+    /// <summary> 
+    /// Linq 多条件联合查询 
+    /// 构造函数使用True时：单个AND有效，多个AND有效；单个OR无效，多个OR无效；混合时写在AND后的OR有效
+    /// 构造函数使用False时：单个AND无效，多个AND无效；单个OR有效，多个OR有效；混合时写在OR后面的AND有效 
+    /// </summary> 
+    public static class PredicateBuilder
+    {
+        /// <summary>
+        /// 创建一个值为true的predicate
+        /// </summary>
+        public static Expression<Func<T, bool>> True<T>()
+        {
+            return param => true;
+        }
+
+        /// <summary>
+        /// 创建一个值为false的predicate
+        /// </summary>
+        public static Expression<Func<T, bool>> False<T>()
+        {
+            return param => false;
+        }
+
+        /// <summary>
+        /// 从指定的lambda表达式创建一个predicate
+        /// </summary>
+        public static Expression<Func<T, bool>> Create<T>(Expression<Func<T, bool>> predicate)
+        {
+            return predicate;
+        }
+
+        /// <summary>
+        /// 使用逻辑"和(Add)"结合第一个与第二个predicate
+        /// </summary>
+        public static Expression<Func<T, bool>> And<T>(this Expression<Func<T, bool>> first, Expression<Func<T, bool>> second)
+        {
+            return first.Compose(second, Expression.AndAlso);
+        }
+
+        /// <summary>
+        /// 使用逻辑"或(Or)"结合第一个与第二个predicate
+        /// </summary>
+        public static Expression<Func<T, bool>> Or<T>(this Expression<Func<T, bool>> first, Expression<Func<T, bool>> second)
+        {
+            return first.Compose(second, Expression.OrElse);
+        }
+
+        /// <summary>
+        /// 否定 predicate.
+        /// </summary>
+        public static Expression<Func<T, bool>> Not<T>(this Expression<Func<T, bool>> expression)
+        {
+            var negated = Expression.Not(expression.Body);
+            return Expression.Lambda<Func<T, bool>>(negated, expression.Parameters);
+        }
+
+        /// <summary>
+        /// 合并两个predicate
+        /// </summary>
+        static Expression<T> Compose<T>(this Expression<T> first, Expression<T> second, Func<Expression, Expression, Expression> merge)
+        {
+            // zip parameters (map from parameters of second to parameters of first)
+            var map = first.Parameters
+                .Select((f, i) => new { f, s = second.Parameters[i] })
+                .ToDictionary(p => p.s, p => p.f);
+
+            // replace parameters in the second lambda expression with the parameters in the first
+            var secondBody = ParameterRebinder.ReplaceParameters(map, second.Body);
+
+            // create a merged lambda expression with parameters from the first expression
+            return Expression.Lambda<T>(merge(first.Body, secondBody), first.Parameters);
+        }
+
+        /// <summary>
+        /// ParameterRebinder
+        /// </summary>
+        class ParameterRebinder : System.Linq.Expressions.ExpressionVisitor
+        {
+            /// <summary>
+            /// The ParameterExpression map
+            /// </summary>
+            readonly Dictionary<ParameterExpression, ParameterExpression> map;
+
+            /// <summary>
+            /// Initializes a new instance of the <see cref="ParameterRebinder"/> class.
+            /// </summary>
+            /// <param name="map">The map.</param>
+            ParameterRebinder(Dictionary<ParameterExpression, ParameterExpression> map)
+            {
+                this.map = map ?? new Dictionary<ParameterExpression, ParameterExpression>();
+            }
+
+            /// <summary>
+            /// Replaces the parameters.
+            /// </summary>
+            /// <param name="map">The map.</param>
+            /// <param name="exp">The exp.</param>
+            /// <returns>Expression</returns>
+            public static Expression ReplaceParameters(Dictionary<ParameterExpression, ParameterExpression> map, Expression exp)
+            {
+                return new ParameterRebinder(map).Visit(exp);
+            }
+
+            /// <summary>
+            /// Visits the parameter.
+            /// </summary>
+            /// <param name="p">The p.</param>
+            /// <returns>Expression</returns>
+            protected override Expression VisitParameter(ParameterExpression p)
+            {
+                ParameterExpression replacement;
+
+                if(map.TryGetValue(p, out replacement)) {
+                    p = replacement;
+                }
+
+                return base.VisitParameter(p);
+            }
+        }
+    }
+}
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq.Expressions;
+
+namespace CFTC.Hea.Common
+{
+    /// <summary>
+    /// 动态生成Lambda表达式树帮助类
+    /// </summary>
+    public class LambdaHelp
+    {
+        #region 属性
+        /// <summary>
+        /// 字段名
+        /// </summary>
+        public string FieldName { get; set; }
+        /// <summary>
+        /// 比较关系
+        /// </summary>
+        public string Compare { get; set; }
+        /// <summary>
+        /// 值
+        /// </summary>
+        public string Values { get; set; }
+
+        /// <summary>
+        /// 条件连接关系
+        /// </summary>
+        public string JoinType { get; set; }
+        #endregion
+
+        #region 方法
+        /// <summary>
+        /// 动态生成Lambda表达式树
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="filter"></param>
+        /// <returns></returns>
+        public static Expression<Func<T, bool>> FilterBy<T>(IEnumerable<LambdaHelp> filter)
+        {
+            string type = string.Empty;
+            string fullType = string.Empty;
+            string JoinType = string.Empty;
+            Expression finalExpr = null;
+            ParameterExpression paramExpr = Expression.Parameter(typeof(T), "p");
+            foreach(var item in filter) {
+                Expression current = null;
+                type = typeof(T).GetProperty(item.FieldName).PropertyType.Name.ToLower();
+                fullType = typeof(T).GetProperty(item.FieldName).PropertyType.FullName.ToLower();
+                #region 根据字段数据类型，生成Lambda表达式
+                //如果是字符型，并且是like比较，就调用字符的包含
+                switch(type) {
+                    case "string":
+                        if(item.Compare.ToUpper() == "LIKE")
+                            current = GetExpressionString(item.FieldName, item.Values, paramExpr);
+                        else
+                            current = GetExpression<string>(item.FieldName, item.Values, paramExpr, item.Compare);
+                        break;
+                    case "int":
+                    case "int32":
+                        current = GetExpression<int>(item.FieldName, int.Parse(item.Values), paramExpr, item.Compare);
+                        break;
+                    case "decimal":
+                        current = GetExpression<decimal>(item.FieldName, decimal.Parse(item.Values), paramExpr, item.Compare);
+                        break;
+                    case "double":
+                        current = GetExpression<double>(item.FieldName, double.Parse(item.Values), paramExpr, item.Compare);
+                        break;
+                    case "datetime":
+                        current = GetExpression<DateTime>(item.FieldName, DateTime.Parse(item.Values), paramExpr, item.Compare);
+                        break;
+                    case "nullable`1":
+                        if(fullType.IndexOf("int") != -1)
+                            current = GetExpression<int?>(item.FieldName, int.Parse(item.Values), paramExpr, item.Compare);
+                        break;
+                }
+                #endregion
+
+                #region 生成Lambda表达式树
+                if(current != null) {
+                    if(finalExpr == null)
+                        finalExpr = current;
+                    else if(item.JoinType.ToUpper() == "AND")
+                        finalExpr = Expression.And(finalExpr, current);
+                    else if(item.JoinType.ToUpper() == "OR")
+                        finalExpr = Expression.Or(finalExpr, current);
+                }
+                JoinType = item.JoinType;
+                #endregion
+            }
+            if(finalExpr == null)
+                return p => true;
+            else
+                return Expression.Lambda<Func<T, bool>>(finalExpr, paramExpr);
+        }
+
+        /// <summary>
+        /// 用户字符串的包含的Lambda
+        /// </summary>
+        /// <param name="field"></param>
+        /// <param name="Value"></param>
+        /// <param name="paramExpr"></param>
+        /// <returns></returns>
+        public static Expression GetExpressionString(string field, string Value, ParameterExpression paramExpr)
+        {
+            MemberExpression namePropExpr = Expression.Property(paramExpr, field);  // 创建表示属性的表达式
+            System.Reflection.MethodInfo containsMethod = typeof(string).GetMethod("Contains");  // 获取表示System.String.Contains方法的System.Reflection.MethodInfo
+            ConstantExpression nameValueExpr = Expression.Constant(Value, typeof(string));  // 创建表示value变量值的表达式
+            MethodCallExpression nameContainsExpr = Expression.Call(namePropExpr, containsMethod, nameValueExpr);  // 创建表示参数的表达式
+            return nameContainsExpr;
+        }
+
+        /// <summary>
+        /// 生成Lambda表达式
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="field"></param>
+        /// <param name="Value"></param>
+        /// <param name="paramExpr"></param>
+        /// <param name="Condition"></param>
+        /// <returns></returns>
+        public static Expression GetExpression<T>(string field, object Value, ParameterExpression paramExpr, string Condition)
+        {
+            MemberExpression member = Expression.Property(paramExpr, field);  // 创建属性表达式
+            ConstantExpression ValueExpr = Expression.Constant(Value, typeof(T));  // 创建表示变量值的表达式
+            BinaryExpression query = null;// Expression.Equal(PropExpr, ValueExpr);   // 创建表示参数的表达式
+            switch(Condition) {
+                case "GT":  //大于
+                    query = Expression.GreaterThan(member, ValueExpr);
+                    break;
+                case "GTE":  //大于或等于
+                    query = Expression.GreaterThanOrEqual(member, ValueExpr);
+                    break;
+                case "LT":  //小于
+                    query = Expression.LessThan(member, ValueExpr);
+                    break;
+                case "LTE":  //小于或等于
+                    query = Expression.LessThanOrEqual(member, ValueExpr);
+                    break;
+                case "EQ":  //等于
+                    query = Expression.Equal(member, ValueExpr);
+                    break;
+                case "NotEQ":  //不等于
+                    query = Expression.NotEqual(member, ValueExpr);
+                    break;
+            }
+            return query;
+        }
+        #endregion
+    }
+}
