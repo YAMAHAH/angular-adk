@@ -128,7 +128,19 @@ export class TreeUtils {
         }
         return operands.reverse();
     }
-
+    calaculate(left, right, operator) {
+        return left + right;
+    }
+    postOrder(node: TreeNode) {
+        if (node) {
+            if (node.name.length > 0) {
+                this.postOrder(node.right);//如果是符号则计算右结点;
+                return this.calaculate(this.postOrder(node.left), this.postOrder(node.right), node.name);
+            } else {
+                return node.name;
+            }
+        }
+    }
     /// <summary>
     /// 对于>或者&lt;运算符，判断实际是否为>=,&lt;&gt;、&lt;=，并调整当前运算符位置
     /// </summary>

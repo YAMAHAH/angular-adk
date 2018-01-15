@@ -20,7 +20,6 @@ export class AppComponent implements OnDestroy {
   title = 'app';
 
   expressionTree() {
-
     let postExprStr = TreeUtils.parseExpressionToPostfixExpression("66*(5+(42+3)*8+30)"); //.replace(/\,/g, "");
     console.log(postExprStr);
     console.log(TreeUtils.calculatePostfixExpression(postExprStr));
