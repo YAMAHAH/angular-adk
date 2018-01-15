@@ -5,6 +5,8 @@ import { ExprressionVisitor, Expression } from './helpers/ExpressionBuilder';
 import { ExpressionOperators } from './helpers/ExpressionOperators';
 import { ValueTransformer } from '@angular/compiler/src/util';
 import { QueryBuilderConfig } from './query-builder/query-builder.interfaces';
+import { TreeUtils } from './helpers/Tree';
+import { TreeNode } from './models/TreeNode';
 
 @Component({
   selector: 'app-root',
@@ -17,6 +19,23 @@ export class AppComponent implements OnDestroy {
   }
   title = 'app';
 
+  expressionTree() {
+
+    let postExprStr = TreeUtils.parseExpressionToPostfixExpression("66*(5+(42+3)*8+30)"); //.replace(/\,/g, "");
+    console.log(postExprStr);
+    console.log(TreeUtils.calculatePostfixExpression(postExprStr));
+    let aaa = TreeUtils.parseExpressionToPostfixExpression("1.0+3/2-tan(45)/(1+201)");
+    console.log(TreeUtils.calculatePostfixExpression(aaa));
+    let postfix = "ab+cde+**";
+    let postNode: TreeNode = TreeUtils.convertPostfixExpressionToTree(postExprStr);
+    console.log(postNode);
+    let aa = TreeUtils.parseExpressionToPrefixExpression("(3+4)*5-6"); //.replace(/\,/g, "");
+    console.log(aa);
+    let prefix = aa; //"-*+3456";
+    console.log(TreeUtils.calculatePrefixExpression(prefix));
+    let prefixNode = TreeUtils.convertPrefixExpressionToTree(prefix);
+    console.log(prefixNode);
+  }
   test2() {
 
     let filters: FilterMetadata[] = [
@@ -161,7 +180,7 @@ export class AppComponent implements OnDestroy {
       }
     };
     let exprBuilder = new ExprressionVisitor();
-    const expr = exprBuilder.lambdaExpression(exprNode);
+    const expr = exprBuilder.visitExpression(exprNode);
     let filterDatas = this.treeTableData.filter(expr);
     console.log(filterDatas);
   }
@@ -202,7 +221,7 @@ export class AppComponent implements OnDestroy {
     ];
     let exprNode = this.filterMetaConvertToExpressionTree(filters);
     let exprBuilder = new ExprressionVisitor();
-    const expr = exprBuilder.lambdaExpression(exprNode);
+    const expr = exprBuilder.visitExpression(exprNode);
     let filterDatas2 = this.treeTableData.filter(expr);
 
     let runTime = new Date().getTime();

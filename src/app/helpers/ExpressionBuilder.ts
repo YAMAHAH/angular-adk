@@ -3,18 +3,18 @@ import { ExpressionOperators } from './ExpressionOperators';
 
 export class ExprressionVisitor {
     visitAndExpression(exprNode: Expression) {
-        const conditions = exprNode.expressions.map(expr => this.lambdaExpression(expr));
+        const conditions = exprNode.expressions.map(expr => this.visitExpression(expr));
         return it => conditions.every(c => c(it));
     }
 
     visitOrExpression(exprNode: Expression) {
-        const conditions = exprNode.expressions.map(expr => this.lambdaExpression(expr));
-        return it => conditions.some(c => c(it));
+        const conditions = exprNode.expressions.map(expr => this.visitExpression(expr));
+        return it => conditions.some(c => it(c));
     }
 
     visitNotExpression(exprNode: Expression) {
         return it => {
-            const condition = this.lambdaExpression(exprNode.rightExpression);
+            const condition = this.visitExpression(exprNode.rightExpression);
             return !condition(it);
         }
     }
@@ -43,8 +43,8 @@ export class ExprressionVisitor {
         return exprNode.value;
     }
 
-    lambdaExpression(exprNode: Expression) {
-        if (['not', 'and', 'or'].includes(exprNode.nodeType))
+    visitExpression(exprNode: Expression) {
+        if (['not', 'and', 'or'].some(it => it == exprNode.nodeType))
             return this.visitUnaryExpression(exprNode);
         else
             return this.visitBinaryExpression(exprNode);
@@ -108,7 +108,7 @@ export class ExprressionVisitor {
 
 export function filter(source: any[], exprNode) {
     let exprBuilder = new ExprressionVisitor();
-    const expr = exprBuilder.lambdaExpression(exprNode);
+    const expr = exprBuilder.visitExpression(exprNode);
     return source.filter(expr);
 }
 
