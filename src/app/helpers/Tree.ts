@@ -99,12 +99,12 @@ export class TreeUtils {
         let operands: string[] = [];//操作数
         let tokens: string[] = this.parseExpression(expression) || [];
         tokens = tokens.reverse();
-        tokens.forEach(ch => {
-            if (!this._Operators.some(it => it == ch)) {
-                operands.push(ch);
-            } else if (ch == ')') {
-                operators.push(ch);
-            } else if (ch == '(') {
+        tokens.forEach(token => {
+            if (!this._Operators.some(it => it == token)) {
+                operands.push(token);
+            } else if (token == ')') {
+                operators.push(token);
+            } else if (token == '(') {
                 let top;
                 while ((top = operators.pop()) != ')') {
                     // let left = operands.pop();
@@ -112,13 +112,13 @@ export class TreeUtils {
                     operands.push(top); // + "," + left + "," + right + ",");
                 }
             } else {//操作符
-                while (!(operators.length == 0) && this.comparePriorityForPrefix(operators[operators.length - 1], ch)) {
+                while (operators.length != 0 && this.comparePriorityForPrefix(operators[operators.length - 1], token)) {
                     //top > ch,pop out
                     // let left = operands.pop();
                     // let right = operands.pop();
                     operands.push(operators.pop()); //+ "," + left + "," + right);
                 }
-                operators.push(ch);
+                operators.push(token);
             }
         });
         while (!(operators.length == 0)) {
@@ -141,6 +141,18 @@ export class TreeUtils {
             }
         }
     }
+
+    binaryTreeToPostfixExpression(node, results) {
+        if (!results) results = [];
+        if (null == node) {
+            return false;
+        }
+        this.binaryTreeToPostfixExpression(node.left, results);
+        this.binaryTreeToPostfixExpression(node.right, results);
+        results.push(node);
+        return true;
+    }
+
     /// <summary>
     /// 对于>或者&lt;运算符，判断实际是否为>=,&lt;&gt;、&lt;=，并调整当前运算符位置
     /// </summary>
@@ -229,7 +241,7 @@ export class TreeUtils {
 
         tokens.forEach(token => {
             if (!this._Operators.some(i => i == token)) { //ch >= '0' && ch <= '9'
-                operands.push(token + "");
+                operands.push(token);
             } else if (token == '(') {
                 operators.push(token);
             } else if (token == ')') {
@@ -331,11 +343,11 @@ export class TreeUtils {
     // (6) 最后是-运算符，计算出35-6的值，即29，由此得出最终结果。
     static calculatePostfixExpression(postfixExpression: string[]) {
         let stack: any[] = [];
-        let tokens: string[] = postfixExpression;  //this.stringToArray(postfixExpression);
+        let tokens: string[] = postfixExpression;
         tokens.forEach(token => {
-            if (!this._Operators.some(it => it == token)) {  //ch >= '0' && ch <= '9'
+            if (!this._Operators.some(it => it == token)) {
                 stack.push(+token);
-            } else {//操作符
+            } else {
                 let right, left, result;
                 right = stack.pop();
                 if (!['tan', 'atan'].some(it => it == token)) {
@@ -391,7 +403,7 @@ export class TreeUtils {
                         return i;
                 }
                 else {
-                    if (this._Operators.some(x => x.includes(chr)))
+                    if (this._Operators.some(it => it == chr))
                         return i;
                 }
             }
