@@ -549,12 +549,18 @@ export class ExpressionParser {
         if (!this.root) return [];
         return this.convertToPostfixExpression(this.root, null);
     }
+    croot;
     private convertToPostfixExpression(node, results) {
         if (!results) results = [];
         if (null == node) return [];
+        let newLeft, newRight, newRoot;
         node.left && this.convertToPostfixExpression(node.left, results);
+        if (node.left) newLeft = { type: node.left.type, operator: node.left.operator, tag: node.left };
         node.right && this.convertToPostfixExpression(node.right, results);
+        if (node.right) newRight = { type: node.right.type, operator: node.right.operator, tag: node.right };
+        newRoot = { type: node.type, operator: node.operator, tag: node, left: newLeft, right: newRight };
         node && results.push(node);
+        console.log(newRoot);
         return results;
     }
     toPrefixExpression() {
@@ -569,6 +575,35 @@ export class ExpressionParser {
         node.right && this.convertToPrefixExpression(node.right, results);
         return results;
     }
+
+    toMiddleExpression() {
+        if (!this.root) return [];
+        return this.convertToMiddleExpression(this.root, null);
+    }
+    stringBuilder: string = "";
+    private convertToMiddleExpression(node, results) {
+        if (!results) { results = []; this.stringBuilder = ""; }
+        if (null == node) return [];
+        if (node.left) {
+            let newLeft = { type: "(", opertor: "(" };
+            results.push(newLeft);
+            this.stringBuilder += "(";
+            this.convertToMiddleExpression(node.left, results);
+        }
+        if (node) {
+            results.push(node);
+            this.stringBuilder += (node.operator || node.value);
+        }
+        if (node.right) {
+            this.convertToMiddleExpression(node.right, results);
+            this.stringBuilder += ")";
+            let newLeft = { type: ")", opertor: ")" };
+            results.push(newLeft);
+        }
+        console.log(this.stringBuilder);
+        return results;
+    }
+
     // To be filled in by the template
     version = '<%= version %>';
     toString() { return 'JavaScript Expression Parser (JSEP) v' + this.version; };
@@ -700,4 +735,40 @@ const exparessionParser = new ExpressionParser();
 
 if (typeof window !== 'undefined') {
     window['expression'] = exparessionParser;
+}
+
+export interface IExpression {
+    type: ExpressionNodeType;
+    operator?: string;
+    argument?: IExpression;//unaryExpr
+    prefix?: boolean; //unaryExpr -+:true else :false
+    left?: IExpression; //binaryExpr
+    right?: IExpression; //binaryExpr
+    value?;  //LITERAL
+    raw?: string; //identifier number string 
+    test?: IExpression; //condExpr
+    consequent?: IExpression; //condExpr
+    alternate?: IExpression;//condExpr
+    arguments?: IExpression[]; //callExpr
+    callee?: IExpression; //callExpr
+    name?: string; //identifier
+    body?: IExpression[]; //compoundExpr
+    property?: string; //memberExpr
+    object?: IExpression;//memberExpr
+    computed?: boolean //memberExpr abc.aa :true  abc['aa']:true
+    elements?: IExpression[]; //arrayExpr
+}
+
+enum ExpressionNodeType {
+    COMPOUND = 'Compound',
+    IDENTIFIER = 'Identifier',
+    MEMBER_EXP = 'MemberExpression',
+    LITERAL = 'Literal',
+    THIS_EXP = 'ThisExpression',
+    CALL_EXP = 'CallExpression',
+    UNARY_EXP = 'UnaryExpression',
+    BINARY_EXP = 'BinaryExpression',
+    LOGICAL_EXP = 'LogicalExpression',
+    CONDITIONAL_EXP = 'ConditionalExpression',
+    ARRAY_EXP = 'ArrayExpression'
 }
