@@ -1,8 +1,10 @@
 <query-builder class='margin30' [data]='query' [config]='config'>
 </query-builder>
 <div class='margin30'>
-    <textarea>{{query | json}}</textarea>
+    <textarea id="scroll-1">{{query | json}}</textarea>
 </div>
 <button (click)="test()">GenRowFilterFunc</button>
 <button (click)="test2()">GenRowFilterFunc</button>
 <button (click)="expressionTree()">ExpressionTree</button>
+
+<adk-PerfectScrollbarDemo></adk-PerfectScrollbarDemo>

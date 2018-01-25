@@ -9,6 +9,44 @@ textarea {
     height: 250px;
 }
 
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar,
+::-webkit-scrollbar-thumb {
+    opacity: 0;
+    filter: "alpha(opacity=0)";
+    -ms-filter: "alpha(opacity=0)";
+}
+
+::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 4px;
+}
+
+:not(body):hover::-webkit-scrollbar-thumb {
+    background-color: #635d5d !important;
+}
+
+:hover::-webkit-scrollbar,
+:hover::-webkit-scrollbar-thumb {
+    opacity: 1;
+    filter: "alpha(opacity=100)";
+    -ms-filter: "alpha(opacity=100)";
+}
+
+body::-webkit-scrollbar,
+body::-webkit-scrollbar-thumb {
+    opacity: 1;
+    filter: "alpha(opacity=100)";
+    -ms-filter: "alpha(opacity=100)";
+}
+
+// body::-webkit-scrollbar-thumb {
+//     background-color: #9b3737 !important;
+// }
 query-builder {
     padding: 10px 10px 6px;
     border: 1px solid #DCC896;

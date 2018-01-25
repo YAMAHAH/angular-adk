@@ -309,6 +309,7 @@ class RegExpBuilder extends RegExp {
         this._source = '';
         this._prefixes = '';
         this._suffixes = '';
+        this._modifiers = 'sm';
         return this.add();
     }
 

@@ -1,21 +1,59 @@
-import { Component, OnDestroy } from '@angular/core';
-import { JsUtils } from './helpers/JsUtils';
+import { Component, OnDestroy, OnInit, HostListener, Renderer2 } from '@angular/core';
 import { gt, gte, lt, lte, eq, isEmpty } from 'lodash';
-import { ExprressionVisitor, Expression } from './helpers/ExpressionBuilder';
-import { ExpressionOperators } from './helpers/ExpressionOperators';
+
 import { ValueTransformer } from '@angular/compiler/src/util';
-import { QueryBuilderConfig } from './query-builder/query-builder.interfaces';
-import { TreeUtils } from './helpers/Tree';
-import { TreeNode } from './models/TreeNode';
+import { TreeUtils } from '../lib/helpers/Tree';
+import { TreeNode } from '../lib/models/TreeNode';
+import { Expression, ExprressionVisitor } from '../lib/helpers/ExpressionBuilder';
+import { JsUtils } from '../lib/helpers/JsUtils';
+import { ExpressionOperators } from '../lib/helpers/ExpressionOperators';
+import { QueryBuilderConfig } from '../lib/query-builder/query-builder.interfaces';
+import { PageStatusMonitor } from '../lib/services/application/PageStatusMonitor';
+
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']
 })
-export class AppComponent implements OnDestroy {
+export class AppComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
 
+  }
+  constructor(private pageStatusMonitor: PageStatusMonitor,
+    private renderer: Renderer2) {
+
+  }
+  setElementStyle(target, style: string) {
+    let styleEl: HTMLStyleElement = document.createElement('style');
+    styleEl.innerHTML = style;
+    if (target) {
+      target.appendChild(styleEl);
+    }
+    return () => target.removeChild(styleEl);
+  }
+  @HostListener('document:mouseleave', ['$event'])
+  onMouseLeave(event) {
+    if (this.clearStyle) {
+      this.clearStyle();
+      this.clearStyle = null;
+    }
+  }
+  clearStyle;
+  @HostListener('document:mouseenter', ['$event'])
+  onMouseEnter(event) {
+    let style = ` 
+      body::-webkit-scrollbar-thumb {
+        background-color: #9b3737 !important;
+    }`;
+    this.clearStyle = this.setElementStyle(document.body, style);
+  }
+  ngOnInit() {
+    // this.pageStatusMonitor.idle(data => { console.log('application idle') });
+    // this.pageStatusMonitor.onEvery(3, () => { console.log('30s') });
+    // this.pageStatusMonitor.focus(() => { console.log('focus') });
+    // this.pageStatusMonitor.blur(() => { console.log('blur') });
+    // this.pageStatusMonitor.wakeup(() => { console.log('wakeup'); });
   }
   title = 'app';
 
@@ -34,7 +72,35 @@ export class AppComponent implements OnDestroy {
     console.log(TreeUtils.calculatePrefixExpression(prefix));
     let prefixNode = TreeUtils.convertPrefixExpressionToTree(prefix);
     console.log(prefixNode);
+
+    let filters: FilterMetadata = {
+      IsChildExpress: true, concat: 'and', childs: [
+        { field: 'gono', value: 'P010102156', operators: 'like' },
+        {
+          concat: 'and', IsChildExpress: true, childs: [
+            { field: 'goname1', value: '铁板牙', operators: 'contains1', concat: 'none' },
+            { field: 'goname2', value: '圆头十字', operators: 'contains2', concat: 'or' },
+            { field: 'goname3', value: '圆头十字', operators: 'contains3', concat: 'and' }
+          ]
+        },
+        { field: 'goname', value: '铁板牙', operators: 'contains', concat: 'and' },
+        { field: 'ord', value: '5', operators: 'startsWith', concat: 'or' },
+      ]
+    };
+    this.calaNodeLeftRightOrder(filters);
+    console.log(filters);
   }
+
+  calaNodeLeftRightOrder(node: FilterMetadata, nodeData = { val: 1 }) {
+    node.left = nodeData.val;
+    node.childs && node.childs.forEach(it => {
+      ++nodeData.val;
+      this.calaNodeLeftRightOrder(it, nodeData);
+    });
+    ++nodeData.val;
+    node.right = nodeData.val;
+  }
+
   test2() {
 
     let filters: FilterMetadata[] = [
@@ -949,6 +1015,8 @@ export interface FilterMetadata {
   IsSetOperation?: boolean;
   Expression?;
   regExp?: RegExp;
+  left?: number;
+  right?: number;
 }
 
 interface ITreeTableRow {
