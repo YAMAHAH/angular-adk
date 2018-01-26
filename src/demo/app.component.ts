@@ -39,12 +39,17 @@ export class AppComponent implements OnInit, OnDestroy {
       this.clearStyle = null;
     }
   }
+  scorllbarBackgroundColor = "#9b3737";
   clearStyle;
   @HostListener('document:mouseenter', ['$event'])
   onMouseEnter(event) {
+    if (this.clearStyle) {
+      this.clearStyle();
+      this.clearStyle = null;
+    }
     let style = ` 
       body::-webkit-scrollbar-thumb {
-        background-color: #9b3737 !important;
+        background-color: ${this.scorllbarBackgroundColor} !important;
     }`;
     this.clearStyle = this.setElementStyle(document.body, style);
   }

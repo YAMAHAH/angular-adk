@@ -8,6 +8,7 @@ import '../lib/helpers/RegExpBuilder';
 import { PerfectScrollbarDemoModule } from './perfect-scrollbar/PerfectScrollbarDemoModule';
 import { QueryBuilderModule } from '../lib/query-builder/query-builder.module';
 import { PageStatusMonitor } from '../lib/services/application/PageStatusMonitor';
+import { DrapDropDemoModule } from './drap-drop/DrapDropDemoModule';
 
 
 @NgModule({
@@ -17,7 +18,8 @@ import { PageStatusMonitor } from '../lib/services/application/PageStatusMonitor
   imports: [
     BrowserModule,
     QueryBuilderModule,
-    PerfectScrollbarDemoModule
+    PerfectScrollbarDemoModule,
+    DrapDropDemoModule
   ],
   providers: [PageStatusMonitor],
   bootstrap: [AppComponent]

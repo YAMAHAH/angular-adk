@@ -5,6 +5,7 @@ export interface IRule {
   field?: string;
   value?: any;
   operator?: string;
+  not?:boolean;
 }
 export interface RuleSet extends IRule {
   // condition?: string;

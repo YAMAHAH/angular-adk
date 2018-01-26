@@ -95,6 +95,9 @@ export class QueryBuilderComponent implements OnInit, OnChanges {
     }
     return this.config.fields[field].options || this.defaultEmptyList;
   }
+  notClick(event, data, notOption) {
+    data.not = notOption.checked = !notOption.checked;
+  }
 
   addRule(parent: RuleSet): void {
     if (this.config.addRule) {
@@ -140,4 +143,8 @@ export class QueryBuilderComponent implements OnInit, OnChanges {
     const fieldObject = this.config.fields[rule.field];
     rule.operator = this.operatorMap[fieldObject.type][0];
   }
+
+  //on rule: moveAfter
+  //on group header:moveAtBegin
+  //on group :moveAtEnd
 }
