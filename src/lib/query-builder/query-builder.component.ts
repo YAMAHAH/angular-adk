@@ -1,5 +1,6 @@
 import { Component, OnInit, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { Field, Option, QueryBuilderConfig, Rule, RuleSet } from './query-builder.interfaces';
+import { DropEvent } from 'ng-drag-drop';
 
 @Component({
   selector: 'query-builder',
@@ -147,4 +148,59 @@ export class QueryBuilderComponent implements OnInit, OnChanges {
   //on rule: moveAfter
   //on group header:moveAtBegin
   //on group :moveAtEnd
+
+  sameLevel: boolean = false;
+  dropDone: boolean = false;
+  onDragStartHandler(event, item) {
+    this.sameLevel = true;
+  }
+
+  onDragEndHandler(event, item, groupHeader: boolean) {
+    if (!this.dropDone) {
+      if (groupHeader) {
+        let currIdx = this.parentData.rules.lastIndexOf(item);
+        if (currIdx > -1) this.parentData.rules.splice(currIdx, 1);
+      } else {
+        let currIdx = this.data.rules.findIndex(it => it == item);
+        if (currIdx > -1) this.data.rules.splice(currIdx, 1);
+      }
+    }
+    console.log(item, this);
+    this.dropDone = false;
+    this.sameLevel = false;
+
+  }
+  onDragOverHandler(event: DropEvent, item, groupHeader: boolean) {
+    event.nativeEvent.preventDefault();
+    event.nativeEvent.stopPropagation();
+  }
+  onDropHandler(event: DropEvent, target, groupHeader: boolean) {
+    event.nativeEvent.preventDefault();
+    event.nativeEvent.stopPropagation();
+    console.log(target, this);
+    this.moveSortableToTarget(event.dragData, target, groupHeader);
+  }
+  moveSortableToTarget(curr: Rule, target: Rule, groupHeader: boolean) {
+    if (target && (!target.rules || target.rules.length == 0)) { //rule
+      if (this.sameLevel) {
+        let currIdx = this.data.rules.findIndex(it => it == curr);
+        if (currIdx > -1) this.data.rules.splice(currIdx, 1);
+        this.dropDone = true;
+      }
+      let targetIdx = this.data.rules.findIndex(it => it == target);
+      if (targetIdx > -1) this.data.rules.splice(targetIdx + 1, 0, curr);
+    } else if (target && target.rules && target.rules.length > 0) { //group
+      if (this.sameLevel) {
+        let currIdx = this.data.rules.findIndex(it => it == curr);
+        if (currIdx > -1) this.data.rules.splice(currIdx, 1);
+        this.dropDone = true;
+      }
+      if (groupHeader) {
+        this.data.rules.unshift(curr);
+      } else {
+        let targetIdx = this.data.rules.findIndex(it => it == target);
+        if (targetIdx > -1) this.data.rules.splice(targetIdx + 1, 0, curr);
+      }
+    }
+  }
 }

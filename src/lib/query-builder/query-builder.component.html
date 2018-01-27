@@ -6,8 +6,8 @@
     </ng-container>
 </div>
 
-<div class="switch-field">
-    <!-- <i class="fa fw fa-rotate-90 fa-exchange"></i> -->
+<div droppable (onDrop)="onDropHandler($event,data,true)" (onDragover)="onDragOverHandler($event,data)" class="switch-field">
+    <i draggable (onDragStart)="onDragStartHandler($event,data,true)" (onDragEnd)="onDragEndHandler($event,data,true)" [dragData]="data" class="fa fw fa-rotate-90 fa-exchange"></i>
     <input type="checkbox" [(ngModel)]="data.not" #notOption/>
     <label (click)="notClick($event,data,notOption)">Not</label>
     <input type="radio" [(ngModel)]="data.condition" value="and" #andOption/>
@@ -16,17 +16,16 @@
     <label (click)="data.condition=orOption.value">OR</label>
 </div>
 
-<ul droppable class="query-tree">
+<ul class="query-tree">
     <ng-container *ngFor="let item of data.rules">
-        <ng-container *ngIf="{ruleset: !!item.rules, invalid: !config.allowEmptyRuleset && item.rules && item.rules.length === 0} as local">
-            <li draggable [dragData]="item" [ngClass]="{'query-item': true, 'rule': !local.ruleset, 'ruleset': local.ruleset, 'invalid-ruleset': local.invalid}">
+        <ng-container *ngIf="{ruleset: !!item.rules, invalid: !config.allowEmptyRuleset && item.rules && item.rules.length===0 } as local">
+            <li droppable (onDrop)="onDropHandler($event,item,false)" (onDragover)="onDragOverHandler($event,item)" [ngClass]="{ 'query-item': true, 'rule': !local.ruleset, 'ruleset': local.ruleset, 'invalid-ruleset': local.invalid}">
                 <ng-container *ngIf="!local.ruleset">
-
                     <div class="switch-field float-right">
                         <button class="danger" (click)="removeRule(item, data)"><i class="close-icon">❌</i></button>
                     </div>
                     <div class="switch-field" style="display:inline;">
-                        <!-- <i style="float:left;" class="fa fw fa-rotate-90 fa-exchange"></i> -->
+                        <i draggable (onDragStart)="onDragStartHandler($event,item,false)" (onDragEnd)="onDragEndHandler($event,item,false)" [dragData]="item" style="float:left;" class="fa fw fa-rotate-90 fa-exchange"></i>
                         <input type="checkbox" [(ngModel)]="item.not" #itemNotOption/>
                         <label (click)="notClick($event,item,itemNotOption)">Not</label>
                     </div>
@@ -41,15 +40,15 @@
                         </option>
                      </select>
                     <ng-container [ngSwitch]="getInputType(item.field, item.operator)">
-                        <input class="form-control" [(ngModel)]="item.value" *ngSwitchCase="'text'" type="text">
-                        <input class="form-control" [(ngModel)]="item.value" *ngSwitchCase="'date'" type="date">
-                        <input class="form-control" [(ngModel)]="item.value" *ngSwitchCase="'number'" type="number">
-                        <select class="form-control" [(ngModel)]="item.value" *ngSwitchCase="'select'">
+                        <input class="form-control" [(ngModel)]="item.value" *ngSwitchCase=" 'text'" type="text">
+                        <input class="form-control" [(ngModel)]="item.value" *ngSwitchCase=" 'date'" type="date">
+                        <input class="form-control" [(ngModel)]="item.value" *ngSwitchCase=" 'number'" type="number">
+                        <select class="form-control" [(ngModel)]="item.value" *ngSwitchCase=" 'select'">
                             <option *ngFor="let opt of getOptions(item.field)" [ngValue]="opt.value">
                                 {{opt.name}}
                             </option>
                         </select>
-                        <ng-container *ngSwitchCase="'multiselect'">
+                        <ng-container *ngSwitchCase=" 'multiselect'">
                             <div style="margin-bottom: 8px"></div>
                             <select class="form-control" [(ngModel)]="item.value" style="min-width: 200px" multiple>
                                 <option *ngFor="let opt of getOptions(item.field)" [ngValue]="opt.value">
@@ -57,7 +56,7 @@
                                  </option>
                             </select>
                         </ng-container>
-                        <input class="form-control" [(ngModel)]="item.value" *ngSwitchCase="'checkbox'" type="checkbox">
+                        <input class="form-control" [(ngModel)]="item.value" *ngSwitchCase=" 'checkbox'" type="checkbox">
                     </ng-container>
                 </ng-container>
                 <query-builder *ngIf="local.ruleset" [data]="item" [parentData]="data" [config]="config" [typeMap]="typeMap" [operatorMap]="operatorMap"></query-builder>
