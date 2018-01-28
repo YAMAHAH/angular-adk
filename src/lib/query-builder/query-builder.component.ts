@@ -1,6 +1,7 @@
 import { Component, OnInit, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { Field, Option, QueryBuilderConfig, Rule, RuleSet } from './query-builder.interfaces';
 import { DropEvent } from 'ng-drag-drop';
+import { IRule } from './index';
 
 @Component({
   selector: 'query-builder',
@@ -149,57 +150,33 @@ export class QueryBuilderComponent implements OnInit, OnChanges {
   //on group header:moveAtBegin
   //on group :moveAtEnd
 
-  sameLevel: boolean = false;
-  dropDone: boolean = false;
   onDragStartHandler(event, item) {
-    this.sameLevel = true;
   }
 
   onDragEndHandler(event, item, groupHeader: boolean) {
-    if (!this.dropDone) {
-      if (groupHeader) {
-        let currIdx = this.parentData.rules.lastIndexOf(item);
-        if (currIdx > -1) this.parentData.rules.splice(currIdx, 1);
-      } else {
-        let currIdx = this.data.rules.findIndex(it => it == item);
-        if (currIdx > -1) this.data.rules.splice(currIdx, 1);
-      }
-    }
-    console.log(item, this);
-    this.dropDone = false;
-    this.sameLevel = false;
-
   }
   onDragOverHandler(event: DropEvent, item, groupHeader: boolean) {
-    event.nativeEvent.preventDefault();
-    event.nativeEvent.stopPropagation();
+    // event.nativeEvent.preventDefault();
+    // event.nativeEvent.stopPropagation();
+    console.log(event);
   }
   onDropHandler(event: DropEvent, target, groupHeader: boolean) {
     event.nativeEvent.preventDefault();
     event.nativeEvent.stopPropagation();
-    console.log(target, this);
-    this.moveSortableToTarget(event.dragData, target, groupHeader);
-  }
-  moveSortableToTarget(curr: Rule, target: Rule, groupHeader: boolean) {
-    if (target && (!target.rules || target.rules.length == 0)) { //rule
-      if (this.sameLevel) {
-        let currIdx = this.data.rules.findIndex(it => it == curr);
-        if (currIdx > -1) this.data.rules.splice(currIdx, 1);
-        this.dropDone = true;
-      }
-      let targetIdx = this.data.rules.findIndex(it => it == target);
-      if (targetIdx > -1) this.data.rules.splice(targetIdx + 1, 0, curr);
-    } else if (target && target.rules && target.rules.length > 0) { //group
-      if (this.sameLevel) {
-        let currIdx = this.data.rules.findIndex(it => it == curr);
-        if (currIdx > -1) this.data.rules.splice(currIdx, 1);
-        this.dropDone = true;
-      }
-      if (groupHeader) {
-        this.data.rules.unshift(curr);
+    let dropWrapper = { dropTarget: target, groupHeader: groupHeader, parent: this.data };
+    let dragWrapper: { dragTarget: IRule, groupHeader: boolean, parent: IRule } = event.dragData;
+    // console.log(dragWrapper, dropWrapper);
+    if (dragWrapper.parent && dragWrapper.dragTarget != dropWrapper.dropTarget) {
+      let dragRules = dragWrapper.parent.rules;
+      let dragIdx = dragRules.findIndex(it => it == dragWrapper.dragTarget);
+      if (dragIdx > -1) dragRules.splice(dragIdx, 1);
+
+      let dropRules = dropWrapper.parent.rules;
+      if (dropWrapper.groupHeader) {
+        dropRules.unshift(dragWrapper.dragTarget);
       } else {
-        let targetIdx = this.data.rules.findIndex(it => it == target);
-        if (targetIdx > -1) this.data.rules.splice(targetIdx + 1, 0, curr);
+        let targetIdx = dropRules.findIndex(it => it == target);
+        if (targetIdx > -1) dropRules.splice(targetIdx + 1, 0, dragWrapper.dragTarget);
       }
     }
   }

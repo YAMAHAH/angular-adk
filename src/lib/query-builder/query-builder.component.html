@@ -6,8 +6,8 @@
     </ng-container>
 </div>
 
-<div droppable (onDrop)="onDropHandler($event,data,true)" (onDragover)="onDragOverHandler($event,data)" class="switch-field">
-    <i draggable (onDragStart)="onDragStartHandler($event,data,true)" (onDragEnd)="onDragEndHandler($event,data,true)" [dragData]="data" class="fa fw fa-rotate-90 fa-exchange"></i>
+<div droppable (onDrop)="onDropHandler($event,data,true)" (onDragOver)="onDragOverHandler($event,data,true)" class="switch-field">
+    <i *ngIf="!!parentData" draggable [dragData]="{groupHeader:true,dragTarget:data,parent:parentData}" (onDragStart)="onDragStartHandler($event,data,true)" (onDragEnd)="onDragEndHandler($event,data,true)" class="fa fw fa-rotate-90 fa-exchange"></i>
     <input type="checkbox" [(ngModel)]="data.not" #notOption/>
     <label (click)="notClick($event,data,notOption)">Not</label>
     <input type="radio" [(ngModel)]="data.condition" value="and" #andOption/>
@@ -19,13 +19,13 @@
 <ul class="query-tree">
     <ng-container *ngFor="let item of data.rules">
         <ng-container *ngIf="{ruleset: !!item.rules, invalid: !config.allowEmptyRuleset && item.rules && item.rules.length===0 } as local">
-            <li droppable (onDrop)="onDropHandler($event,item,false)" (onDragover)="onDragOverHandler($event,item)" [ngClass]="{ 'query-item': true, 'rule': !local.ruleset, 'ruleset': local.ruleset, 'invalid-ruleset': local.invalid}">
+            <li droppable (onDrop)="onDropHandler($event,item,false)" (onDragOver)="onDragOverHandler($event,item,false)" [ngClass]="{ 'query-item': true, 'rule': !local.ruleset, 'ruleset': local.ruleset, 'invalid-ruleset': local.invalid}">
                 <ng-container *ngIf="!local.ruleset">
                     <div class="switch-field float-right">
                         <button class="danger" (click)="removeRule(item, data)"><i class="close-icon">❌</i></button>
                     </div>
                     <div class="switch-field" style="display:inline;">
-                        <i draggable (onDragStart)="onDragStartHandler($event,item,false)" (onDragEnd)="onDragEndHandler($event,item,false)" [dragData]="item" style="float:left;" class="fa fw fa-rotate-90 fa-exchange"></i>
+                        <i draggable [dragData]="{groupHeader:false,dragTarget:item,parent:data}" (onDragStart)="onDragStartHandler($event,item,false)" (onDragEnd)="onDragEndHandler($event,item,false)" style="float:left;" class="fa fw fa-rotate-90 fa-exchange"></i>
                         <input type="checkbox" [(ngModel)]="item.not" #itemNotOption/>
                         <label (click)="notClick($event,item,itemNotOption)">Not</label>
                     </div>
