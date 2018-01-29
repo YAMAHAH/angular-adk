@@ -1,3 +1,8 @@
+<p>{{'projectname' | translate:{value:'param'} }}</p>
+<p>{{translateName}}</p>
+<div [translate]="'projectname'" [translateParams]="{value:'directive'}"></div>
+<button type="button" (click)="useChinese()">中文</button>
+<button type="button" (click)="useEnglish()">English</button>
 <query-builder class='margin30' [data]='query' [config]='config'>
 </query-builder>
 <div class='margin30'>
@@ -8,5 +13,6 @@
 <button (click)="expressionTree()">ExpressionTree</button>
 
 <adk-PerfectScrollbarDemo></adk-PerfectScrollbarDemo>
-<adk-swap-list></adk-swap-list>
-<adk-complete-demo></adk-complete-demo>
+<!-- <adk-swap-list></adk-swap-list>
+<adk-complete-demo></adk-complete-demo> -->
+<!-- <adk-drag-helper></adk-drag-helper> -->

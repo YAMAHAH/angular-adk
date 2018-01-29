@@ -3,11 +3,13 @@ import { CommonModule } from '@angular/common';
 import { FormsModule, } from '@angular/forms';
 import { QueryBuilderComponent } from './query-builder.component';
 import { NgDragDropModule } from 'ng-drag-drop';
+import { TranslateModule } from '@ngx-translate/core';
 @NgModule({
   imports: [
     CommonModule,
     FormsModule,
-    NgDragDropModule.forRoot()
+    NgDragDropModule.forRoot(),
+    TranslateModule
   ],
   declarations: [
     QueryBuilderComponent

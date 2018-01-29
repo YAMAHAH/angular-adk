@@ -29,11 +29,11 @@ export class QueryBuilderComponent implements OnInit, OnChanges {
       boolean: 'checkbox'
     };
     this.operatorMap = {
-      string: ['=', '!=', 'contains', 'like'],
-      number: ['=', '!=', '>', '>=', '<', '<='],
-      category: ['=', '!='],
-      date: ['=', '!=', '>', '>=', '<', '<='],
-      boolean: ['=']
+      string: ['eq', 'neq', 'contains', 'like'],
+      number: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
+      category: ['eq', 'neq'],
+      date: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
+      boolean: ['eq']
     };
   }
 
@@ -160,12 +160,12 @@ export class QueryBuilderComponent implements OnInit, OnChanges {
     // event.nativeEvent.stopPropagation();
     console.log(event);
   }
-  onDropHandler(event: DropEvent, target, groupHeader: boolean) {
+  onDropHandler(event: DropEvent, dropObject) {
     event.nativeEvent.preventDefault();
     event.nativeEvent.stopPropagation();
-    let dropWrapper = { dropTarget: target, groupHeader: groupHeader, parent: this.data };
-    let dragWrapper: { dragTarget: IRule, groupHeader: boolean, parent: IRule } = event.dragData;
-    // console.log(dragWrapper, dropWrapper);
+    let dropWrapper: IDropObjectWrapper = dropObject;
+    let dragWrapper: IDragObjectWrapper = event.dragData;
+
     if (dragWrapper.parent && dragWrapper.dragTarget != dropWrapper.dropTarget) {
       let dragRules = dragWrapper.parent.rules;
       let dragIdx = dragRules.findIndex(it => it == dragWrapper.dragTarget);
@@ -175,9 +175,21 @@ export class QueryBuilderComponent implements OnInit, OnChanges {
       if (dropWrapper.groupHeader) {
         dropRules.unshift(dragWrapper.dragTarget);
       } else {
-        let targetIdx = dropRules.findIndex(it => it == target);
-        if (targetIdx > -1) dropRules.splice(targetIdx + 1, 0, dragWrapper.dragTarget);
+        let dropIdx = dropRules.findIndex(it => it == dropWrapper.dropTarget);
+        if (dropIdx > -1) dropRules.splice(dropIdx + 1, 0, dragWrapper.dragTarget);
       }
     }
   }
+}
+
+interface IDragObjectWrapper {
+  dragTarget: IRule;
+  groupHeader: boolean;
+  parent: IRule;
+}
+
+interface IDropObjectWrapper {
+  dropTarget: IRule;
+  groupHeader: boolean;
+  parent: IRule;
 }

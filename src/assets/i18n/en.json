@@ -1,0 +1,20 @@
+{
+    "projectname": "projectName {{value}}",
+    "Rule": "Rule",
+    "Ruleset": "RuleSet",
+    "Not": "Not",
+    "And": "And",
+    "Or": "Or",
+    "eq": "equals",
+    "neq": "notEquals",
+    "gt": "greaterThan",
+    "gte": "greaterThanOrEquals",
+    "lt": "lessThan",
+    "lte": "lessThanOrEquals",
+    "in": "in",
+    "not in": "not in",
+    "contains": "Contains",
+    "like": "Like",
+    "is null": "isNull",
+    "is not null": "isNotNull"
+}

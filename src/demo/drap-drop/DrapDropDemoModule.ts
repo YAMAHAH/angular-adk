@@ -4,6 +4,7 @@ import { NgDragDropModule } from 'ng-drag-drop';
 import { SwapListComponent } from './swap-list/swap-list.component';
 import { CompleteDemoComponent } from './complete-demo/complete-demo.component';
 import { FormsModule } from '@angular/forms';
+import { DragHelperComponent } from './drag-helper/drag-helper.component';
 
 
 @NgModule({
@@ -12,8 +13,8 @@ import { FormsModule } from '@angular/forms';
         FormsModule,
         NgDragDropModule.forRoot()
     ],
-    exports: [SwapListComponent, CompleteDemoComponent],
-    declarations: [SwapListComponent, CompleteDemoComponent],
+    exports: [SwapListComponent, CompleteDemoComponent, DragHelperComponent],
+    declarations: [SwapListComponent, CompleteDemoComponent, DragHelperComponent],
     providers: [],
 })
 export class DrapDropDemoModule { }

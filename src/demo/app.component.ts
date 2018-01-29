@@ -9,6 +9,10 @@ import { JsUtils } from '../lib/helpers/JsUtils';
 import { ExpressionOperators } from '../lib/helpers/ExpressionOperators';
 import { QueryBuilderConfig } from '../lib/query-builder/query-builder.interfaces';
 import { PageStatusMonitor } from '../lib/services/application/PageStatusMonitor';
+import { TranslateService } from '@ngx-translate/core';
+import { TranslationChangeEvent } from "@ngx-translate/core";
+
+import * as myson from './aa.json';
 
 
 @Component({
@@ -21,8 +25,18 @@ export class AppComponent implements OnInit, OnDestroy {
 
   }
   constructor(private pageStatusMonitor: PageStatusMonitor,
+    public translate: TranslateService,
     private renderer: Renderer2) {
+    this.translate.addLangs(['zh', 'en']);	// 增加语言
+    this.translate.setDefaultLang('zh');		// 设置默认语言
+    this.translate.use('zh');
+  }
 
+  useEnglish() {
+    this.translate.use('en');
+  }
+  useChinese() {
+    this.translate.use('zh');
   }
   setElementStyle(target, style: string) {
     let styleEl: HTMLStyleElement = document.createElement('style');
@@ -53,12 +67,18 @@ export class AppComponent implements OnInit, OnDestroy {
     }`;
     this.clearStyle = this.setElementStyle(document.body, style);
   }
+  translateName;
   ngOnInit() {
     // this.pageStatusMonitor.idle(data => { console.log('application idle') });
     // this.pageStatusMonitor.onEvery(3, () => { console.log('30s') });
     // this.pageStatusMonitor.focus(() => { console.log('focus') });
     // this.pageStatusMonitor.blur(() => { console.log('blur') });
     // this.pageStatusMonitor.wakeup(() => { console.log('wakeup'); });
+    this.translate.onLangChange
+      .subscribe((event: TranslationChangeEvent) => {
+        this.translateName = this.translate.instant('projectname', { value: 'param' });
+      });
+    console.log(myson);
   }
   title = 'app';
 
@@ -958,12 +978,12 @@ export class AppComponent implements OnInit, OnDestroy {
   public query = {
     condition: 'and',
     rules: [
-      { field: 'age', operator: '<=' },
-      { field: 'birthday', operator: '>=' },
+      { field: 'age', operator: 'lte' },
+      { field: 'birthday', operator: 'gte' },
       {
         condition: 'or',
         rules: [
-          { field: 'gender', operator: '=' },
+          { field: 'gender', operator: 'eq' },
           { field: 'occupation', operator: 'in' },
           { field: 'school', operator: 'is null' }
         ]
@@ -998,9 +1018,6 @@ export class AppComponent implements OnInit, OnDestroy {
     }
   }
 }
-
-
-
 
 
 export interface FilterMetadata {
