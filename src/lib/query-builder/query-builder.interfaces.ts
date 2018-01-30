@@ -2,6 +2,7 @@ export interface IRule {
   nodeType?: string;
   condition?: string;
   rules?: IRule[];
+  key?: string;
   field?: string;
   value?: any;
   operator?: string;
@@ -9,14 +10,11 @@ export interface IRule {
   parent?: IRule;
 }
 export interface RuleSet extends IRule {
-  // condition?: string;
-  // rules?: IRule[];
+
 }
 
 export interface Rule extends IRule {
-  // field?: string;
-  // value?: any;
-  // operator?: string;
+
 }
 
 export interface Option {
@@ -25,6 +23,7 @@ export interface Option {
 }
 
 export interface Field {
+  key?: string;
   name: string;
   type: string;
   nullable?: boolean;

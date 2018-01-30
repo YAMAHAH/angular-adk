@@ -978,22 +978,23 @@ export class AppComponent implements OnInit, OnDestroy {
   public query = {
     condition: 'and',
     rules: [
-      { field: 'age', operator: 'lte' },
-      { field: 'birthday', operator: 'gte' },
+      { key: 'test.age', field: "Age", operator: 'lte' },
+      { key: 'test.birthday', field: "Birthday", operator: 'gte' },
       {
         condition: 'or',
         rules: [
-          { field: 'gender', operator: 'eq' },
-          { field: 'occupation', operator: 'in' },
-          { field: 'school', operator: 'is null' }
+          { key: 'test.gender', field: "Gender", operator: 'eq' },
+          { key: 'test.occupation', field: "Occupation", operator: 'in' },
+          { key: 'test.school', field: "School", operator: 'isNull' }
         ]
       }
     ]
   };
   public config: QueryBuilderConfig = {
     fields: {
-      'age': { name: 'Age', type: 'number' },
-      'gender': {
+      'test.age': { key: "test.age", name: 'Age', type: 'number' },
+      'test.gender': {
+        key: "test.gender",
         name: 'Gender',
         type: 'category',
         options: [
@@ -1001,11 +1002,12 @@ export class AppComponent implements OnInit, OnDestroy {
           { name: 'Female', value: 'f' }
         ]
       },
-      'name': { name: 'Name', type: 'string' },
-      'educated': { name: 'College Degree?', type: 'boolean' },
-      'birthday': { name: 'Birthday', type: 'date' },
-      'school': { name: 'School', type: 'string', nullable: true },
-      'occupation': {
+      'test.name': { key: "test.name", name: 'Name', type: 'string' },
+      'test.educated': { key: "test.educated", name: 'Educated', type: 'boolean' },
+      'test.birthday': { key: "test.birthday", name: 'Birthday', type: 'date' },
+      'test.school': { key: "test.school", name: 'School', type: 'string', nullable: true },
+      'test.occupation': {
+        key: "test.occupation",
         name: 'Occupation',
         type: 'string',
         options: [

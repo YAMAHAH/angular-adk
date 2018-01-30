@@ -6,8 +6,17 @@
 <query-builder class='margin30' [data]='query' [config]='config'>
 </query-builder>
 <div class='margin30'>
-    <textarea id="scroll-1">{{query | json}}</textarea>
+    <textarea class="tx_textarea" id="scroll-1">
+        {{query | json}}
+       </textarea>
 </div>
+<mat-form-field>
+    <textarea matInput placeholder="Autosize textarea" matTextareaAutosize matAutosizeMinRows="2" matAutosizeMaxRows="5" id="scroll-1">
+    </textarea>
+</mat-form-field>
+<mat-form-field>
+    <input matInput type="month">
+</mat-form-field>
 <button (click)="test()">GenRowFilterFunc</button>
 <button (click)="test2()">GenRowFilterFunc</button>
 <button (click)="expressionTree()">ExpressionTree</button>

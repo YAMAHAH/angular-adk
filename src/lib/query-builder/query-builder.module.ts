@@ -4,12 +4,14 @@ import { FormsModule, } from '@angular/forms';
 import { QueryBuilderComponent } from './query-builder.component';
 import { NgDragDropModule } from 'ng-drag-drop';
 import { TranslateModule } from '@ngx-translate/core';
+import { MatButtonModule } from "@angular/material";
 @NgModule({
   imports: [
     CommonModule,
     FormsModule,
     NgDragDropModule.forRoot(),
-    TranslateModule
+    TranslateModule,
+    MatButtonModule
   ],
   declarations: [
     QueryBuilderComponent

@@ -29,29 +29,29 @@
                         <input type="checkbox" [(ngModel)]="item.not" #itemNotOption/>
                         <label (click)="notClick($event,item,itemNotOption)">{{'Not' | translate}}</label>
                     </div>
-                    <select class="form-control" [(ngModel)]="item.field" (change)="onFieldChange(item)">
+                    <select class="form-control" [(ngModel)]="item.key" (change)="onFieldChange(item)">
                         <option *ngFor="let field of fieldNames" [ngValue]="field">
-                            {{config.fields[field].name | translate}}
+                            {{(config.fields[field].key | translate) }}
                         </option>
                     </select>
                     <select class="form-control" [(ngModel)]="item.operator">
-                        <option *ngFor="let operator of getOperators(item.field)" [ngValue]="operator">
+                        <option *ngFor="let operator of getOperators(item.key)" [ngValue]="operator">
                             {{operator | translate}}
                         </option>
                      </select>
-                    <ng-container [ngSwitch]="getInputType(item.field, item.operator)">
+                    <ng-container [ngSwitch]="getInputType(item.key, item.operator)">
                         <input class="form-control" [(ngModel)]="item.value" *ngSwitchCase=" 'text'" type="text">
                         <input class="form-control" [(ngModel)]="item.value" *ngSwitchCase=" 'date'" type="date">
                         <input class="form-control" [(ngModel)]="item.value" *ngSwitchCase=" 'number'" type="number">
                         <select class="form-control" [(ngModel)]="item.value" *ngSwitchCase=" 'select'">
-                            <option *ngFor="let opt of getOptions(item.field)" [ngValue]="opt.value">
+                            <option *ngFor="let opt of getOptions(item.key)" [ngValue]="opt.value">
                                 {{opt.name}}
                             </option>
                         </select>
                         <ng-container *ngSwitchCase=" 'multiselect'">
                             <div style="margin-bottom: 8px"></div>
                             <select class="form-control" [(ngModel)]="item.value" style="min-width: 200px" multiple>
-                                <option *ngFor="let opt of getOptions(item.field)" [ngValue]="opt.value">
+                                <option *ngFor="let opt of getOptions(item.key)" [ngValue]="opt.value">
                                     {{opt.name}}
                                  </option>
                             </select>

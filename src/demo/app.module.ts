@@ -10,8 +10,8 @@ import { QueryBuilderModule } from '../lib/query-builder/query-builder.module';
 import { PageStatusMonitor } from '../lib/services/application/PageStatusMonitor';
 import { DrapDropDemoModule } from './drap-drop/DrapDropDemoModule';
 import { TranslateModule, TranslateLoader, MissingTranslationHandler, MissingTranslationHandlerParams } from "@ngx-translate/core";
-
-
+import { MatInputModule, MatFormFieldModule } from '@angular/material';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 export function createTranslateLoader(http: HttpClient) {
   return new TranslateHttpLoader(http, './assets/i18n/', '.json');
 }
@@ -29,6 +29,7 @@ export class MyMissingTranslationHandler implements MissingTranslationHandler {
   ],
   imports: [
     BrowserModule,
+    BrowserAnimationsModule,
     HttpClientModule,
     TranslateModule.forRoot({
       loader: {
@@ -44,7 +45,9 @@ export class MyMissingTranslationHandler implements MissingTranslationHandler {
     }),
     QueryBuilderModule,
     PerfectScrollbarDemoModule,
-    DrapDropDemoModule
+    DrapDropDemoModule,
+    MatInputModule, MatFormFieldModule
+
   ],
   providers: [PageStatusMonitor],
   bootstrap: [AppComponent]

@@ -1,7 +1,6 @@
 import { Component, OnInit, Input, OnChanges, SimpleChanges } from '@angular/core';
-import { Field, Option, QueryBuilderConfig, Rule, RuleSet } from './query-builder.interfaces';
+import { Field, Option, QueryBuilderConfig, Rule, RuleSet, IRule } from './query-builder.interfaces';
 import { DropEvent } from 'ng-drag-drop';
-import { IRule } from './index';
 
 @Component({
   selector: 'query-builder',
@@ -29,10 +28,10 @@ export class QueryBuilderComponent implements OnInit, OnChanges {
       boolean: 'checkbox'
     };
     this.operatorMap = {
-      string: ['eq', 'neq', 'contains', 'like'],
-      number: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
+      string: ['eq', 'neq', 'gt', 'lt', 'startsWith', 'notStartsWith', 'endsWith', 'notEndsWith', 'like', 'notLike', 'between', 'notBetween'],
+      number: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'between', 'notBetween'],
       category: ['eq', 'neq'],
-      date: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
+      date: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'between', 'notBetween', 'sameWeek', 'sameMonth', 'sameYear'],
       boolean: ['eq']
     };
   }
@@ -64,10 +63,10 @@ export class QueryBuilderComponent implements OnInit, OnChanges {
       operators = this.operatorMap[type];
     }
     if (fieldObject.options) {
-      operators = operators.concat(['in', 'not in']);
+      operators = operators.concat(['in', 'notIn']);
     }
     if (fieldObject.nullable) {
-      operators = operators.concat(['is null', 'is not null']);
+      operators = operators.concat(['isNull', 'isNotNull']);
     }
     // Cache reference to array object, so it won't be computed next time and trigger a rerender.
     this.operatorsCache[field] = operators;
@@ -80,11 +79,11 @@ export class QueryBuilderComponent implements OnInit, OnChanges {
     }
     const type = this.config.fields[field].type;
     switch (operator) {
-      case 'is null':
-      case 'is not null':
+      case 'isNull':
+      case 'isNotNull':
         return null;  // No displayed component
       case 'in':
-      case 'not in':
+      case 'notIn':
         return 'multiselect';
       default:
         return this.typeMap[type];
@@ -105,11 +104,12 @@ export class QueryBuilderComponent implements OnInit, OnChanges {
     if (this.config.addRule) {
       return this.config.addRule(parent);
     } else {
-      const field = this.fieldNames[0];
-      const fieldObject = this.config.fields[field];
+      const key = this.fieldNames[0];
+      const fieldObject = this.config.fields[key];
       parent.rules = parent.rules.concat([
         {
-          field: field,
+          key: key,
+          field: fieldObject.name,
           operator: this.operatorMap[fieldObject.type][0]
         }
       ]);
@@ -142,7 +142,8 @@ export class QueryBuilderComponent implements OnInit, OnChanges {
 
   onFieldChange(rule: Rule): void {
     delete rule.value;
-    const fieldObject = this.config.fields[rule.field];
+    const fieldObject = this.config.fields[rule.key];
+    rule.field = fieldObject.name;
     rule.operator = this.operatorMap[fieldObject.type][0];
   }
 
@@ -158,7 +159,6 @@ export class QueryBuilderComponent implements OnInit, OnChanges {
   onDragOverHandler(event: DropEvent, item, groupHeader: boolean) {
     // event.nativeEvent.preventDefault();
     // event.nativeEvent.stopPropagation();
-    console.log(event);
   }
   onDropHandler(event: DropEvent, dropObject) {
     event.nativeEvent.preventDefault();

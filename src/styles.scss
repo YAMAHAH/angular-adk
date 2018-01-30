@@ -4,7 +4,7 @@
     margin: 30px;
 }
 
-textarea {
+.tx_textarea {
     width: 100%;
     height: 250px;
 }
@@ -89,3 +89,4 @@ div.scroll-list {
 }
 
 @import url(../node_modules/ng-drag-drop/style.css);
+@import "~@angular/material/prebuilt-themes/indigo-pink.css";
